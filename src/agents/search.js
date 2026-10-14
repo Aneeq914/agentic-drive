@@ -41,6 +41,14 @@
  *   value"; markdown bold/code marks are removed; lines under 6 words get
  *   their file name appended; a heading picked as an answer is followed by
  *   the line under it.
+ * - Citation snippets (offline and AI) are the passage as plain text, max 240
+ *   chars: heading marks, bullets, checkboxes, bold/code/emphasis marks and
+ *   table pipes/rule lines are removed, a heading is followed by " — ",
+ *   table cells are joined with " · ", and lines that do not end in
+ *   punctuation (table rows, bullets) are joined with "; "; CSV passages are
+ *   unchanged (test:
+ *   "citation snippets read as plain text…"). The answer text is not
+ *   affected — snippets are display-only.
  * - AI answer: top 6 ranked passages, numbered [1]..[6]; only the citations
  *   the answer actually uses are returned (all six if it cites none).
  *
@@ -82,6 +90,9 @@
  * ── DO NOT ──
  * - Do not return citations the answer doesn't use (test: "keeps only cited
  *   sources") — the UI would show sources that support nothing.
+ * - Do not clean passage.text itself for snippets: candidateLines() needs the
+ *   raw "|" rows, "#" headings and "- [ ]" markers to read tables and
+ *   headings. Clean a copy (snippetText) only.
  * - Do not renumber or reorder citations after filtering: `n` must keep
  *   matching the "[n]" markers in the answer text.
  * - Do not add SYNONYM_WORDS entries that are stopwords (e.g. "by" is
@@ -305,7 +316,30 @@ export function rankPassages(question, docs) {
   return scoreAll(question, docs).ranked;
 }
 
-const toCitation = (p, n) => ({ n, fileId: p.fileId, fileName: p.fileName, snippet: p.text.length > 240 ? `${p.text.slice(0, 239)}…` : p.text });
+// The UI shows a snippet as plain text: "## Discussion\n- [ ] **Sara** will…" reads as
+// "Discussion — Sara will…", and table rows read "Launch ads · $5,000". CSV passages stay as they are.
+function snippetText(p) {
+  if (p.fileName.toLowerCase().endsWith('.csv')) return p.text;
+  const parts = [];
+  for (const raw of p.text.split('\n')) {
+    if (!raw.trim() || isTableRule(raw)) continue;
+    const heading = isMarkdownHeading(raw);
+    // Markers go twice: "## 2. What we propose" and "**5. Q4.**" only show their number once the
+    // first marker / the bold marks are gone.
+    let line = /^\s*\|/.test(raw) ? tableCells(raw).filter(Boolean).join(' · ') : plainText(raw.replace(LINE_MARKERS, '')).replace(LINE_MARKERS, '');
+    // Single *emphasis* / _emphasis_ marks.
+    line = line.replace(/(^|[\s(])[*_]([^*_\s][^*_]*?)[*_](?=[\s).,;:!?]|$)/g, '$1$2');
+    if (!line) continue;
+    // A heading leads into its text; table rows and unpunctuated bullets would run together, so "; ".
+    const prev = parts[parts.length - 1];
+    const sep = !prev ? '' : prev.heading ? ' — ' : /[.!?:;]$/.test(prev.line) ? ' ' : '; ';
+    parts.push({ line, heading, sep });
+  }
+  const text = parts.map((p) => p.sep + p.line).join('');
+  return text.length > 240 ? `${text.slice(0, 239)}…` : text;
+}
+
+const toCitation = (p, n) => ({ n, fileId: p.fileId, fileName: p.fileName, snippet: snippetText(p) });
 
 // The best line of this many top passages (each >= POOL_CUTOFF of the best) competes for the answer.
 const POOL_SIZE = 10;

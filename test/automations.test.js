@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseInvoice, categorize, csvEscape, parseCsvLine, appendExpenseRow, runAutomations, DEFAULT_RULES, EXPENSES_HEADER } from '../src/agents/automations.js';
+import { parseInvoice, isOwnCompany, categorize, csvEscape, parseCsvLine, appendExpenseRow, runAutomations, DEFAULT_RULES, EXPENSES_HEADER } from '../src/agents/automations.js';
 
 const cloudnest = `INVOICE
 
@@ -106,4 +106,40 @@ test('appendExpenseRow dedupes by source file when the invoice has no number', (
   assert.equal(first.added, true);
   assert.equal(appendExpenseRow(first.csv, inv, 'no-number.txt').added, false);
   assert.equal(appendExpenseRow(first.csv, inv, 'other.txt').added, true);
+});
+
+test('runAutomations: the action-items write carries its own summary; expenses.csv does not', () => {
+  const text = '# Kickoff\n## Action Items\n- [ ] Sara will finalise the campaign brief by July 8.\n- [ ] Hina will set up the ad accounts by July 10.\n- [ ] Bilal will draft the newsletter by July 12.';
+  const r = runAutomations({ record: { name: 'q3-marketing-kickoff.md', kind: 'meeting', topic: 'Marketing' }, text, rules: DEFAULT_RULES, getFileText: () => null });
+  assert.equal(r.writes[0].summary, '3 action items from q3-marketing-kickoff.md — Sara will finalise the campaign brief by July 8.');
+  const one = runAutomations({ record: { name: 'sync.md', kind: 'meeting', topic: null }, text: '## Action Items\n- [ ] Omar will send the report.', rules: DEFAULT_RULES, getFileText: () => null });
+  assert.equal(one.writes[0].summary, '1 action item from sync.md — Omar will send the report.');
+  const long = runAutomations({ record: { name: 'x.md', kind: 'meeting', topic: null }, text: `## Action Items\n- [ ] ${'word '.repeat(80)}`, rules: DEFAULT_RULES, getFileText: () => null });
+  assert.ok(long.writes[0].summary.length <= 160);
+  const inv = runAutomations({ record: { name: 'cloudnest.txt', kind: 'invoice', topic: 'Finance' }, text: cloudnest, rules: DEFAULT_RULES, getFileText: () => null });
+  assert.equal('summary' in inv.writes[0], false);
+});
+
+test('isOwnCompany matches the company name ignoring case and legal suffixes', () => {
+  assert.equal(isOwnCompany('Brightleaf Labs (Pvt.) Ltd.', 'Brightleaf Labs'), true);
+  assert.equal(isOwnCompany('BRIGHTLEAF LABS', 'Brightleaf Labs'), true);
+  assert.equal(isOwnCompany('Brightleaf Labs Private Limited', 'brightleaf labs'), true);
+  assert.equal(isOwnCompany('Brightleaf Labs Inc.', 'Brightleaf Labs (Pvt.) Ltd.'), true);
+  assert.equal(isOwnCompany('Brightleaf Lab Supplies Ltd.', 'Brightleaf Labs'), false);
+  assert.equal(isOwnCompany('CloudNest Hosting Ltd.', 'Brightleaf Labs'), false);
+  assert.equal(isOwnCompany('Brightleaf Labs', ''), false);
+  assert.equal(isOwnCompany('', 'Brightleaf Labs'), false);
+});
+
+test('runAutomations: an invoice the company sent is not logged as an expense', () => {
+  const sent = 'INVOICE\nFrom: Brightleaf Labs (Pvt.) Ltd.\nBill To: Northwind Health\nInvoice Number: INV-0912\nDiscovery workshops\nTotal Due: $10,800.00';
+  const r = runAutomations({ record: { name: 'inv-0912.md', kind: 'invoice', topic: 'Finance' }, text: sent, rules: DEFAULT_RULES, getFileText: () => null, ownCompany: 'Brightleaf Labs' });
+  assert.deepEqual(r.writes, []);
+  assert.deepEqual(r.logs, ['INV-0912 is an invoice you sent (from Brightleaf Labs), so it was not logged as an expense.']);
+  // Without an own company set, it is logged as before.
+  const legacy = runAutomations({ record: { name: 'inv-0912.md', kind: 'invoice', topic: 'Finance' }, text: sent, rules: DEFAULT_RULES, getFileText: () => null });
+  assert.equal(legacy.writes.length, 1);
+  // A supplier's invoice is still logged when the own company is set.
+  const bought = runAutomations({ record: { name: 'cloudnest.txt', kind: 'invoice', topic: 'Finance' }, text: cloudnest, rules: DEFAULT_RULES, getFileText: () => null, ownCompany: 'Brightleaf Labs' });
+  assert.equal(bought.writes[0].name, 'expenses.csv');
 });

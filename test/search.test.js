@@ -182,3 +182,21 @@ test('real drive: a name heading picked as the answer reads on into the line bel
   assert.match(r.answer.split('\n')[0], /^• Priya Nair — Product Designer/);
   assert.ok(r.citations.every((c) => c.fileName === 'resume-priya-nair-product-designer.pdf'));
 });
+
+test('citation snippets read as plain text: no heading, bullet, checkbox, table or bold/code marks', () => {
+  const md = [{ id: 'm', name: 'kickoff.md', ext: '.md', text: '## Discussion\nThe team reviewed the **Q3** launch goals and the `budget` plan.\n- [ ] Sara will finalise the launch brief.\n* Hina owns the *launch* ads.\n| Item | Cost |\n|---|---|\n| Launch ads | $5,000 |' }];
+  const r = answerOffline('What did the team review for the launch?', md);
+  assert.equal(r.citations.length, 1);
+  const s = r.citations[0].snippet;
+  assert.doesNotMatch(s, /#|\||\*|`|\[ \]|---|^- /);
+  assert.match(s, /^Discussion — The team reviewed the Q3 launch goals and the budget plan\. Sara will finalise the launch brief\. Hina owns the launch ads\./);
+  // Rows and unpunctuated bullets are kept apart with "; " instead of running together.
+  assert.match(s, /Item · Cost; Launch ads · \$5,000/);
+  const figures = answerOffline('What are the launch figures?', [{ id: 'f', name: 'figures.md', ext: '.md', text: '## Launch figures\n- $120,000 launch budget (kickoff.md)\n- $60,000 launch ads (kickoff.md)\n\n**5. Launch.** Ayesha presented the launch figures.' }]);
+  assert.match(figures.citations[0].snippet, /^Launch figures — \$120,000 launch budget \(kickoff\.md\); \$60,000 launch ads \(kickoff\.md\); Launch\. Ayesha presented/);
+  // The answer text itself is unchanged by snippet cleaning.
+  assert.match(r.answer, /The team reviewed the Q3 launch goals and the budget plan\./);
+  // CSV snippets are left as they are.
+  const csv = answerOffline('What was the Q3 budget for item 3?', docs.filter((d) => d.ext === '.csv')).citations[0];
+  assert.match(csv.snippet, /^line_item,department,q3_budget\nItem 0,Dept,0/);
+});

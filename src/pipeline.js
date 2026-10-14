@@ -13,12 +13,20 @@
  *
  * ── BUSINESS RULES ──
  * - Spec §3 "Upload pipeline": organise first, then run enabled automations.
+ * - `ownCompany` (the drive owner's company name, from the server) is passed
+ *   to runAutomations so invoices the company sent are not logged as
+ *   expenses (tested in server.test).
  * - Spec §4.4: automation output (expenses.csv, action-item files) is saved as
  *   agent-generated files; expenses.csv is one file updated in place.
  * - Generated files (categories plan Task 4): created with `generated: true`,
  *   confidence `high`, `pinned: false`; tags `generated`, kind, top terms.
  *   Updating an existing generated file replaces only its content + summary,
  *   so its kind/topic (or a user's move) are kept.
+ * - A write's own `summary` (action-items files, synthesized documents) is
+ *   used on both the create and the update path, capped at 160 chars;
+ *   without one (expenses.csv) the summary is offlineSummary() of the content
+ *   (tested in server.test: action-items summary incl. update, expenses.csv
+ *   "Spreadsheet with N rows…", synthesize summary).
  * - Activity log (plan Task 4): `Filed "<name>" under <kind label> (topic:
  *   <topic|none>, confidence: <c>)`, "(AI)" when the AI decided, and for low
  *   confidence a "not sure; looks most like <runner-up>" hint (tested).
@@ -69,23 +77,25 @@ import { topTerms } from './text.js';
 
 const badRequest = (message) => Object.assign(new Error(message), { status: 400 });
 
-export function createPipeline({ store, llm }) {
+export function createPipeline({ store, llm, ownCompany = '' }) {
   const log = (agent, message) => store.addActivity(agent, message);
   const generatedTags = (kind, content) => [...new Set(['generated', kind, ...topTerms(content, 4)])];
 
-  function saveGenerated({ name, kind, topic = null, content }) {
+  // `summary` (optional) comes from the agent that wrote the file; it knows better than a first sentence.
+  function saveGenerated({ name, kind, topic = null, content, summary }) {
     const buffer = Buffer.from(content, 'utf8');
     const ext = path.extname(name).toLowerCase();
+    const given = typeof summary === 'string' && summary.trim() ? summary.trim().slice(0, 160) : null;
     const existing = store.findByName(name);
     if (existing) {
       store.replaceContent(existing.id, buffer, content);
-      return store.update(existing.id, { summary: offlineSummary(existing.kind ?? kind, ext, content) });
+      return store.update(existing.id, { summary: given ?? offlineSummary(existing.kind ?? kind, ext, content) });
     }
     const rec = store.add({ name, buffer, text: content, source: 'agent', generated: true });
     return store.update(rec.id, {
       kind, topic, confidence: 'high', pinned: false,
       tags: generatedTags(kind, content),
-      summary: offlineSummary(kind, ext, content),
+      summary: given ?? offlineSummary(kind, ext, content),
     });
   }
 
@@ -103,7 +113,7 @@ export function createPipeline({ store, llm }) {
     }
     log('Organizer', message);
     const { writes, logs } = runAutomations({
-      record, text, rules: store.getRules(), getFileText: (n) => store.findByName(n)?.text ?? null,
+      record, text, rules: store.getRules(), getFileText: (n) => store.findByName(n)?.text ?? null, ownCompany,
     });
     for (const w of writes) saveGenerated(w);
     for (const m of logs) log('Automations', m);

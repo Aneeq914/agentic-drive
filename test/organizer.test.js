@@ -103,3 +103,33 @@ test('offline summaries: invoices describe the bill, CSVs describe the table', (
   const csv = organizeOffline({ name: 'b.csv', ext: '.csv', text: 'line_item,department,q3_budget\nA,B,1\nC,D,2\n' });
   assert.equal(csv.summary, 'Spreadsheet with 2 rows. Columns: line_item, department, q3_budget.');
 });
+
+test('offline summaries: a receipt says "Receipt", ALL-CAPS vendors are title-cased, "(Other)" is left out', () => {
+  const receipt = 'CAFE LUMEN\nCoffee - Kitchen - Bakery\nTel: +92 42 3578 1190\n\nSALES RECEIPT\nReceipt No: R-20488\nDate: 2026-09-04\nGrilled chicken bowl   $45.60\nSubtotal   $197.30\nTotal: $207.17';
+  assert.equal(offlineSummary('invoice', '.txt', receipt), 'Receipt from Cafe Lumen for $207.17.');
+  const caps = 'INVOICE\nFrom: SKYWAY TRAVEL AGENCY\nInvoice Number: INV-2207\nReturn flight Lahore to Dubai\nTotal: $842.60';
+  assert.equal(offlineSummary('invoice', '.txt', caps), 'Invoice INV-2207 from Skyway Travel Agency for $842.60 (Travel).');
+  const other = 'INVOICE\nFrom: Northwind Consulting\nInvoice Number: INV-0077\nAdvisory services\nTotal: $500.00';
+  assert.equal(offlineSummary('invoice', '.txt', other), 'Invoice INV-0077 from Northwind Consulting for $500.00.');
+  // An invoice number wins over a stray "receipt" mention: it is still an invoice.
+  const numbered = 'INVOICE\nFrom: CloudNest\nInvoice Number: INV-1042\nPlease keep this receipt for your records.\nCloud hosting\nTotal: $1,250.00';
+  assert.match(offlineSummary('invoice', '.txt', numbered), /^Invoice INV-1042 from CloudNest for \$1,250\.00/);
+});
+
+test('offline summaries: a resume reads "<Name> — <title>", other people files use a real sentence', async () => {
+  const resume = 'Priya Nair\nProduct Designer\nDubai, UAE (open to relocating to Lahore) | priya.nair@example.com | +971 50 000 4821 |\nSummary\nProduct designer with 7 years of experience in e-commerce and healthcare apps.';
+  assert.equal(offlineSummary('people', '.pdf', resume), 'Priya Nair — Product Designer');
+  // The bundled resume PDF, through the real extractor.
+  const { extractText } = await import('../src/extract.js');
+  const fs = await import('node:fs');
+  const name = 'resume-priya-nair-product-designer.pdf';
+  const pdfText = await extractText(fs.readFileSync(new URL(`../src/samples/${name}`, import.meta.url)), name);
+  assert.equal(organizeOffline({ name, ext: '.pdf', text: pdfText }).summary, 'Priya Nair — Product Designer');
+  // A policy or job description is not a name + title.
+  const policy = '# Remote and Hybrid Work Policy\n**Policy owner:** Usman Tariq\n\n## 1. Why this policy exists\nSince we moved to the Gulberg office, we have a space built for working together.';
+  assert.equal(offlineSummary('people', '.md', policy), 'Since we moved to the Gulberg office, we have a space built for working together.');
+  const jd = '# Job Description: Senior Backend Engineer\n**Company:** Brightleaf Labs\n\n## About us\nBrightleaf Labs designs and builds websites and apps for retailers.';
+  assert.equal(offlineSummary('people', '.md', jd), 'Brightleaf Labs designs and builds websites and apps for retailers.');
+  // Name + title shape only counts for people files.
+  assert.notEqual(offlineSummary('report', '.pdf', resume), 'Priya Nair — Product Designer');
+});

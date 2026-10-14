@@ -19,11 +19,19 @@
  *   fixed order, with labels) and the 8 topics. PATCH /api/files/:id with
  *   {kind?, topic?} moves + pins a file: 400 for an invalid kind/topic, an
  *   empty or non-object body; 404 for an unknown id (tested, incl. restart).
+ * - POST /api/samples (only): each loaded sample's createdAt is the first
+ *   valid YYYY-MM-DD date in its text at 09:00 UTC, or the load time when it
+ *   has none. Real uploads and the files automations write while samples
+ *   load keep their real creation time (tested).
+ * - Synthesized files carry the Synthesizer's own one-line summary (tested).
+ * - The drive's own company name is env OWN_COMPANY (default "Brightleaf
+ *   Labs"), or createApp's `ownCompany`; invoices it sent are not added to
+ *   expenses.csv (tested: bundled INV-0912; a custom ownCompany).
  * - Synthesized files are kind `report` with the most common non-null topic
  *   of their sources (ties: the first source's), or null (tested).
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
- * - createApp() takes dataDir/llm/samplesDir as arguments so tests run on a
+ * - createApp() takes dataDir/llm/samplesDir/ownCompany as arguments so tests run on a
  *   temp folder with offline agents; hard-coding them would make the tests
  *   wipe or depend on real data and real API keys.
  * - A mixed upload batch returns 200 with per-file `errors`; only a batch
@@ -38,6 +46,8 @@
  * - Do not return API keys or raw provider errors with secrets to the client.
  * - Do not listen() on import — tests import createApp() directly.
  * - Do not re-run automations from PATCH: a move is a label change only.
+ * - Do not back-date anything but samples: an upload's createdAt is when the
+ *   user added it, whatever dates its text mentions.
  */
 import path from 'node:path';
 import fs from 'node:fs';
@@ -54,6 +64,8 @@ import { synthesize, FORMATS } from './src/agents/synthesizer.js';
 import { KINDS, TOPICS } from './src/agents/classifier.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+// The company the drive belongs to (the bundled samples' studio); its own invoices are income, not expenses.
+const DEFAULT_OWN_COMPANY = 'Brightleaf Labs';
 
 class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -68,9 +80,19 @@ function mostCommonTopic(docs) {
   return best;
 }
 
-export function createApp({ dataDir, llm, samplesDir = path.join(here, 'src', 'samples') }) {
+// The first real YYYY-MM-DD date in a sample's text, at 09:00 UTC; null when there is none.
+// "BL-NDA-2026-012" is not a date (\b + two-digit parts), nor is "2026-13-40" (round-trip check).
+export function sampleDate(text) {
+  for (const [iso] of String(text ?? '').matchAll(/\b\d{4}-\d{2}-\d{2}\b/g)) {
+    const d = new Date(`${iso}T09:00:00.000Z`);
+    if (!Number.isNaN(d.getTime()) && d.toISOString().startsWith(iso)) return d.toISOString();
+  }
+  return null;
+}
+
+export function createApp({ dataDir, llm, samplesDir = path.join(here, 'src', 'samples'), ownCompany = process.env.OWN_COMPANY?.trim() || DEFAULT_OWN_COMPANY }) {
   const store = createStore(dataDir, { defaultRules: DEFAULT_RULES });
-  const pipeline = createPipeline({ store, llm });
+  const pipeline = createPipeline({ store, llm, ownCompany });
   pipeline.migrate();
   const app = express();
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 20 } });
@@ -134,7 +156,10 @@ export function createApp({ dataDir, llm, samplesDir = path.join(here, 'src', 's
     const skipped = [];
     for (const name of fs.readdirSync(samplesDir).sort()) {
       if (store.findByName(name)) { skipped.push(name); continue; }
-      await pipeline.ingest({ name, buffer: fs.readFileSync(path.join(samplesDir, name)), source: 'sample' });
+      const record = await pipeline.ingest({ name, buffer: fs.readFileSync(path.join(samplesDir, name)), source: 'sample' });
+      // Samples are dated by their content, so the demo drive doesn't show 32 files from "just now".
+      const createdAt = sampleDate(store.get(record.id)?.text);
+      if (createdAt) store.update(record.id, { createdAt });
       loaded.push(name);
     }
     res.json({ loaded, skipped });
@@ -159,7 +184,7 @@ export function createApp({ dataDir, llm, samplesDir = path.join(here, 'src', 's
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}-${pad(now.getMinutes())}`;
-    const record = pipeline.saveGenerated({ name: `${result.title} - ${stamp}.md`, kind: 'report', topic: mostCommonTopic(docs), content: result.content });
+    const record = pipeline.saveGenerated({ name: `${result.title} - ${stamp}.md`, kind: 'report', topic: mostCommonTopic(docs), content: result.content, summary: result.summary });
     store.addActivity('Synthesizer', `Created "${record.name}" from ${docs.length} files${result.by === 'ai' ? ' (AI)' : ''}.`);
     res.json(record);
   });

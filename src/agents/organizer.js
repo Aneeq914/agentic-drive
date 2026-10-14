@@ -27,10 +27,20 @@
  * - Tags: kind, topic (lowercased), then the top body terms; unique, max 7.
  * - A file with no readable text is `other`, topic null, confidence low, with
  *   summary "(no readable text)".
- * - Offline summaries: invoices read "Invoice <no> from <vendor> for <total>
- *   (<category>)." (only when the kind is `invoice`); CSVs read "Spreadsheet
- *   with N rows. Columns: …"; other files use their first real sentence
- *   (tested: "offline summaries…", text.test "summarize skips…").
+ * - Offline summaries (only for the matching kind):
+ *   - invoices read "Invoice <no> from <vendor> for <total> (<category>).";
+ *     "(<category>)" is left out when it is Other; an ALL-CAPS vendor is
+ *     title-cased ("CAFE LUMEN" -> "Cafe Lumen") in the summary only (the
+ *     expenses.csv row keeps the parsed vendor); a text with "receipt" in its
+ *     first 10 lines and no invoice number reads "Receipt from <vendor> for
+ *     <total>." (tested: "offline summaries: a receipt says…");
+ *   - people files whose first two lines are a name (2-4 capitalised words)
+ *     and a short title read "<Name> — <title>" (tested with the bundled
+ *     resume PDF through extract.js); policies / job descriptions do not match
+ *     and use their first real sentence (tested);
+ *   - CSVs read "Spreadsheet with N rows. Columns: …";
+ *   - everything else uses text.js summarize(): the first real sentence,
+ *     never a table row, byline or contact line (text.test "summarize…").
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
  * - The offline result is computed first and every AI field is validated and
@@ -43,11 +53,19 @@
  *   and cannot get an invented summary.
  * - The invoice summary is only used when the kind is `invoice`: a brief that
  *   happens to contain a "Total:" line must not be summarised as a bill.
+ * - The "<Name> — <title>" form is only tried for kind `people`, and the name
+ *   line must not contain document words (Policy, Description, Plan…):
+ *   otherwise "# Remote Work Policy" + a short second line would be read as
+ *   a person (tested: policy and job description keep a sentence).
+ * - Receipt detection needs BOTH "receipt" near the top AND no invoice
+ *   number, so an invoice saying "keep this receipt" stays an invoice (tested).
  *
  * ── DO NOT ──
  * - Do not let an AI reply override the forced topics or the csv -> data rule:
  *   the invoice automation (expenses.csv) and the Finance topic filter rely on them.
  * - Do not accept AI kind/topic strings that are not in KIND_IDS / TOPICS.
+ * - Do not move the vendor title-casing into parseInvoice(): expenses.csv
+ *   rows and their dedupe use the vendor/number exactly as parsed.
  * - Do not put classification rules here; they belong in classifier.js, which
  *   is unit- and accuracy-tested on its own.
  */
@@ -65,15 +83,40 @@ export function organizeOffline({ name, ext, text }) {
   return { kind: c.kind, topic, confidence: c.confidence, runnerUp: c.runnerUp, tags, summary: offlineSummary(c.kind, ext, text) };
 }
 
-// Invoices and spreadsheets read badly as "first sentence", so describe them instead.
+// "CAFE LUMEN" -> "Cafe Lumen"; mixed-case names ("CloudNest", "PrintHub") are left alone.
+const titleCase = (name) => (/[A-Z]/.test(name) && !/[a-z]/.test(name)
+  ? name.toLowerCase().replace(/(^|[\s(&/-])([a-z])/g, (m, sep, ch) => sep + ch.toUpperCase())
+  : name);
+
+// A till slip says "receipt" near the top and has no invoice number; it is not an invoice.
+const isReceipt = (text, inv) => !inv.number && /\breceipt\b/i.test(String(text).split(/\r?\n/).slice(0, 10).join('\n'));
+
+// "Priya Nair" / "Product Designer": 2-4 capitalised words, then a short title line.
+const NAME_LINE = /^[A-Z][a-zA-Z'’.-]+(?: [A-Z][a-zA-Z'’.-]+){1,3}$/;
+const NOT_A_NAME = /\b(?:policy|description|handbook|guide|plan|agreement|report|notes|minutes|proposal|summary|invoice|resume|cv)\b/i;
+function resumeHeadline(text) {
+  const [first, second] = String(text).split(/\r?\n/).map((l) => l.replace(/^\s*#+\s*/, '').replace(/[*_]/g, '').trim()).filter(Boolean);
+  if (!first || !second || !NAME_LINE.test(first) || NOT_A_NAME.test(first)) return null;
+  const words = second.split(/\s+/).length;
+  if (words > 8 || /[:|@\d]/.test(second) || /[.!?]$/.test(second) || NOT_A_NAME.test(second)) return null;
+  return `${first} — ${second}`;
+}
+
+// Invoices, receipts, resumes and spreadsheets read badly as "first sentence", so describe them instead.
 export function offlineSummary(kind, ext, text) {
   if (kind === 'invoice') {
     const inv = parseInvoice(text);
     if (inv) {
       const amount = inv.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const money = inv.currency === 'USD' ? `$${amount}` : `${amount} ${inv.currency}`;
-      return `Invoice ${inv.number ? `${inv.number} ` : ''}from ${inv.vendor || 'unknown vendor'} for ${money} (${inv.category}).`.slice(0, 160);
+      const what = isReceipt(text, inv) ? 'Receipt' : `Invoice${inv.number ? ` ${inv.number}` : ''}`;
+      const category = inv.category === 'Other' ? '' : ` (${inv.category})`;
+      return `${what} from ${inv.vendor ? titleCase(inv.vendor) : 'unknown vendor'} for ${money}${category}.`.slice(0, 160);
     }
+  }
+  if (kind === 'people') {
+    const headline = resumeHeadline(text);
+    if (headline) return headline.slice(0, 160);
   }
   if (ext === '.csv' && String(text).trim()) {
     const [header, ...rows] = String(text).split(/\r?\n/).filter((l) => l.trim());

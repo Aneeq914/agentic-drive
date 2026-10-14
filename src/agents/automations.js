@@ -18,11 +18,22 @@
  *   file name when no number was found. A duplicate is skipped, not
  *   re-added (Review Focus #1: same invoice uploaded twice → one row).
  * - An invoice with no readable total writes nothing and logs why.
+ * - An invoice the drive's own company SENT (its vendor is `ownCompany`,
+ *   compared ignoring case, punctuation and legal suffixes such as
+ *   "(Pvt.) Ltd.") is income, not an expense: no row is written and the log
+ *   says "<number> is an invoice you sent (from <company>), so it was not
+ *   logged as an expense." The company name comes from the caller (server:
+ *   env OWN_COMPANY, default "Brightleaf Labs"); with no ownCompany every
+ *   invoice is logged as before (tested; server.test: the bundled INV-0912
+ *   sent to Northwind is not in expenses.csv).
  * - Category is a keyword vote: Software / Travel / Marketing / Office /
  *   Utilities, else Other.
  * - Meeting → action items: a file with `kind === 'meeting'` gets a checklist
  *   written as "<meeting name> - action items.md", kind `meeting`, with the
  *   topic copied from the meeting (null stays null) (categories spec §5; tested).
+ *   Its write carries `summary`: "<N> action item(s) from <meeting file> —
+ *   <first item>", max 160 chars (tested). The expenses.csv write has no
+ *   `summary`, so the pipeline's "Spreadsheet with N rows…" one is used.
  * - Only `kind` triggers rules: an un-migrated record that still has the old
  *   `type` field and no `kind` triggers nothing (tested).
  * - Each rule only runs while it is enabled (DEFAULT_RULES ids
@@ -39,6 +50,13 @@
  *   then total/amount/balance due, then plain total) and the last amount on
  *   that line wins. Otherwise a "Subtotal" line could be logged as the total
  *   (`\btotal\b` deliberately does not match inside "Subtotal").
+ * - The action-items write states its summary explicitly. Without it the
+ *   pipeline summarises the file's text, whose first sentence is the
+ *   "Created automatically by…" note, so every checklist read the same.
+ * - ownCompany is an argument, not process.env: the agent stays pure and
+ *   tests can run with any company name. Matching is whole-name after
+ *   dropping suffixes, not "contains", so a supplier called "Brightleaf Lab
+ *   Supplies" is still logged as an expense (tested).
  * - CSV values go through csvEscape/parseCsvLine so vendors with commas or
  *   quotes ("Acme, \"Best\" Ltd") round-trip and do not shift columns —
  *   which would also break the invoice-number dedupe (column 3).
@@ -47,6 +65,7 @@
  * - Do NOT run automations on agent-generated files (record.generated).
  * - Do NOT key rules off the old `type`/`folder` fields; records carry
  *   `kind`/`topic` now and the migration removes the old ones.
+ * - Do NOT read process.env here; the server passes ownCompany in.
  * - Do NOT do file IO here; return writes and let the pipeline apply them.
  * - Do NOT build CSV rows by plain string join without csvEscape.
  * - Do NOT change EXPENSES_HEADER column order: dedupe reads the invoice
@@ -103,6 +122,16 @@ export function parseInvoice(text) {
   return { vendor, number, date, total, currency, category: categorize(text) };
 }
 
+// "Brightleaf Labs (Pvt.) Ltd." and "BRIGHTLEAF LABS" are the same company: legal suffixes, case and
+// punctuation are ignored, but the remaining words must match exactly ("Brightleaf Lab Supplies" is not us).
+const LEGAL_SUFFIX = new Set(['pvt', 'private', 'ltd', 'limited', 'llc', 'inc', 'co', 'corp', 'corporation', 'plc', 'gmbh', 'company']);
+const companyKey = (name) => String(name ?? '').toLowerCase().replace(/[^a-z0-9&]+/g, ' ').split(' ').filter((w) => w && !LEGAL_SUFFIX.has(w)).join(' ');
+
+export function isOwnCompany(vendor, ownCompany) {
+  const own = companyKey(ownCompany);
+  return own !== '' && companyKey(vendor) === own;
+}
+
 export function csvEscape(value) {
   const s = String(value ?? '');
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -137,7 +166,7 @@ export function appendExpenseRow(existingCsv, inv, sourceFile) {
 
 const money = (n, cur) => (cur === 'USD' ? `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${n.toFixed(2)} ${cur}`);
 
-export function runAutomations({ record, text, rules, getFileText }) {
+export function runAutomations({ record, text, rules, getFileText, ownCompany = '' }) {
   const writes = [];
   const logs = [];
   if (record.generated) return { writes, logs };
@@ -147,6 +176,9 @@ export function runAutomations({ record, text, rules, getFileText }) {
     const inv = parseInvoice(text);
     if (!inv) {
       logs.push(`"${record.name}" looks like an invoice but has no total I could read, so nothing was logged.`);
+    } else if (isOwnCompany(inv.vendor, ownCompany)) {
+      // An invoice we issued is money coming in, not an expense.
+      logs.push(`${inv.number || record.name} is an invoice you sent (from ${ownCompany}), so it was not logged as an expense.`);
     } else {
       const { csv, added } = appendExpenseRow(getFileText(EXPENSES_FILE), inv, record.name);
       const label = inv.number || record.name;
@@ -166,7 +198,10 @@ export function runAutomations({ record, text, rules, getFileText }) {
     } else {
       const name = `${record.name.replace(/\.[^.]+$/, '')} - action items.md`;
       const content = `# Action items: ${record.name}\n\n_Created automatically by the Meeting → action items automation._\n\n${items.map((i) => `- [ ] ${i}`).join('\n')}\n`;
-      writes.push({ name, kind: 'meeting', topic: record.topic ?? null, content });
+      const count = `${items.length} action item${items.length === 1 ? '' : 's'}`;
+      // The file's own text opens with boilerplate, so a first-sentence summary would say nothing.
+      const summary = `${count} from ${record.name} — ${items[0]}`;
+      writes.push({ name, kind: 'meeting', topic: record.topic ?? null, content, summary: summary.length > 160 ? `${summary.slice(0, 159).trimEnd()}…` : summary });
       logs.push(`Found ${items.length} action items in "${record.name}" and created "${name}".`);
     }
   }
