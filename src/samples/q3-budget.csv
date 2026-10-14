@@ -1,0 +1,7 @@
+line_item,department,q3_budget,spent_to_date,remaining,cost_center
+Paid social ads,Marketing,60000,41200,18800,MKT-01
+Content and influencers,Marketing,35000,23300,11700,MKT-02
+Events,Marketing,25000,0,25000,MKT-03
+Cloud hosting,Engineering,12000,11250,750,ENG-01
+Recruiting fees,HR,8000,6500,1500,HR-01
+Legal review,Legal,5000,2000,3000,LEG-01
