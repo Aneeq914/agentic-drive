@@ -17,7 +17,7 @@
 
 ## Global Constraints
 
-- **Project root:** `/home/aneeq914/Desktop/uni/agentic-drive/`. ESM only.
+- **Project root:** the repository root. ESM only.
 - **Subagents** never run git; the coordinator commits.
 - **Kind ids:** `invoice, meeting, contract, proposal, spec, report, data, people, other`.
 - **Kind labels:**

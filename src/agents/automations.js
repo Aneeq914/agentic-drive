@@ -23,9 +23,10 @@
  *   "(Pvt.) Ltd.") is income, not an expense: no row is written and the log
  *   says "<number> is an invoice you sent (from <company>), so it was not
  *   logged as an expense." The company name comes from the caller (server:
- *   env OWN_COMPANY, default "Brightleaf Labs"); with no ownCompany every
- *   invoice is logged as before (tested; server.test: the bundled INV-0912
- *   sent to Northwind is not in expenses.csv).
+ *   createApp's ownCompany or env OWN_COMPANY, no default); with no
+ *   ownCompany every invoice is logged as an expense (tested here and in
+ *   server.test: with ownCompany "Example Studio" its INV-0912 is left out
+ *   of expenses.csv; with none set, the same invoice is logged).
  * - Category is a keyword vote: Software / Travel / Marketing / Office /
  *   Utilities, else Other.
  * - Meeting → action items: a file with `kind === 'meeting'` gets a checklist

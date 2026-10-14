@@ -35,8 +35,8 @@
  *     first 10 lines and no invoice number reads "Receipt from <vendor> for
  *     <total>." (tested: "offline summaries: a receipt says…");
  *   - people files whose first two lines are a name (2-4 capitalised words)
- *     and a short title read "<Name> — <title>" (tested with the bundled
- *     resume PDF through extract.js); policies / job descriptions do not match
+ *     and a short title read "<Name> — <title>" (tested with a resume
+ *     PDF built in memory with pdfkit and read through extract.js); policies / job descriptions do not match
  *     and use their first real sentence (tested);
  *   - CSVs read "Spreadsheet with N rows. Columns: …";
  *   - everything else uses text.js summarize(): the first real sentence,

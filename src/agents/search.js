@@ -56,17 +56,19 @@
  * - BM25 plus a small synonym table gives "meaning-ish" search with no vector
  *   DB and no network, so search still works with no AI key (tests: "synonyms
  *   count" — "spend" finds the "budget" passage).
- * - Passage BM25 alone made answers fragile: in the 32-file drive a decoy
- *   scored 0.56 of the best passage against a 0.6 cutoff, so one added file
- *   could flip the travel answer. Coverage (does the line cover every query
+ * - Passage BM25 alone made answers fragile: in the original 32-file demo
+ *   drive (since removed from the repo) a decoy scored 0.56 of the best
+ *   passage against a 0.6 cutoff, so one added file could flip the travel
+ *   answer. Coverage (does the line cover every query
  *   word, counting its file name and heading?) separates them by a wide
- *   margin; test: "answers stay put when ~30 unrelated files are added".
+ *   margin; test: "answers stay put when ~35 unrelated holdout files are
+ *   added" (over the inline office drive in search.test).
  * - The synonym-only gate stops "cost" in an unrelated file from making it a
  *   "spend" answer (test: "a passage matching only a synonym…").
  * - Line-level re-ranking with a wide pool: the precise line is often in a
  *   long, lower-ranked passage ("Q3 revenue is forecast at $182,400" ranks
  *   below the churn report's summary). The phrase bonus is what lifts it
- *   (test: "real drive: each demo question…").
+ *   (test: "office drive: each question gets its fact first…").
  * - The named-thing rule: "Acme" is in many files, so its idf is low and
  *   CloudNest's "Payment terms: Net 15" outscored Acme's MSA on words alone
  *   (tests: "answers about another named thing…", "no noise citations…").
@@ -97,8 +99,9 @@
  *   matching the "[n]" markers in the answer text.
  * - Do not add SYNONYM_WORDS entries that are stopwords (e.g. "by" is
  *   dropped by tokenize()); they silently become no-ops.
- * - Do not tune the weights against one question. Run the whole demo set
- *   (the "real drive" tests) after any change: most tweaks that fix one
+ * - Do not tune the weights against one question. Run the whole search
+ *   suite (the "office drive" tests and the holdout noise test) after any
+ *   change: most tweaks that fix one
  *   question break another.
  * - Do not strip emails/URLs/#channels from the answer text; they are only
  *   left out of scoring (scoringText), because a name inside

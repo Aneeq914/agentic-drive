@@ -8,8 +8,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "dev": "node --watch --env-file-if-exists=.env server.js",
-    "test": "node --test \"test/**/*.test.js\"",
-    "make-sample-pdf": "node scripts/make-sample-pdf.js"
+    "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

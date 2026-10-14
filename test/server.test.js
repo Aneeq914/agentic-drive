@@ -3,18 +3,19 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { createApp, sampleDate } from '../server.js';
+import { makePdf } from './helpers/pdf.js';
+import { createApp } from '../server.js';
 import { createLlm } from '../src/llm.js';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
 let server;
 let base;
 let dataDir;
 
 before(async () => {
+  // The main app runs with no own company: a developer's OWN_COMPANY must not leak into these tests.
+  delete process.env.OWN_COMPANY;
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'drive-srv-'));
-  const app = createApp({ dataDir, llm: createLlm({}), samplesDir: path.join(here, '..', 'src', 'samples') });
+  const app = createApp({ dataDir, llm: createLlm({}) });
   await new Promise((r) => { server = app.listen(0, r); });
   base = `http://127.0.0.1:${server.address().port}`;
 });
@@ -33,19 +34,109 @@ const upload = async (files, at = base) => {
 const byName = async (name, at = base) => (await json('/api/files', {}, at)).body.files.find((f) => f.name === name);
 // A second, independent app (e.g. "after a restart" on the same dataDir).
 async function startApp(dir) {
-  const app = createApp({ dataDir: dir, llm: createLlm({}), samplesDir: path.join(here, '..', 'src', 'samples') });
+  const app = createApp({ dataDir: dir, llm: createLlm({}) });
   const srv = await new Promise((r) => { const s = app.listen(0, () => r(s)); });
   return { at: `http://127.0.0.1:${srv.address().port}`, close: () => srv.close() };
 }
+
+// ── Inline fixtures: a small drive uploaded through POST /api/upload in the first test. ──
+const KICKOFF = `# Q3 Marketing Kickoff — Meeting Minutes
+
+Date: 2026-07-02
+Attendees: Sara Khan (Marketing Lead), Bilal Ahmed (Content), Hina Raza (Paid Media)
+
+## Discussion
+The team reviewed the Q3 marketing goals: grow newsletter sign-ups by 25% and launch the "Summer Switch" campaign across social channels.
+The total Q3 marketing budget was approved at $120,000.
+The budget is split into $60,000 for paid social ads, $35,000 for content and influencer marketing, and $25,000 for events.
+
+## Decisions
+- We agreed to launch the Summer Switch campaign on July 15.
+
+## Action Items
+- [ ] Sara will finalise the campaign brief by July 8.
+- [ ] Hina will set up the paid social ad accounts by July 10.
+- [ ] Bilal will draft the first four newsletter issues by July 12.
+`;
+const MIDPOINT = `# Q3 Marketing Mid-Point Review — Meeting Minutes
+
+Date: 2026-08-14
+Attendees: Sara Khan, Hina Raza, Bilal Ahmed
+
+## Discussion
+So far we have spent $64,500 of the $120,000 Q3 marketing budget.
+TikTok ads cost less per sign-up than Instagram ads, so paid social spend should move toward TikTok.
+
+## Decisions
+- We agreed to move $10,000 from the events budget to TikTok ads.
+
+## Action Items
+- [ ] Hina will shift $10,000 of budget to TikTok ads by August 20.
+`;
+const WRAPUP = `# Q3 Marketing Wrap-Up — Meeting Minutes
+
+Date: 2026-09-29
+Attendees: Sara Khan, Hina Raza, Bilal Ahmed
+
+## Results
+The Q3 marketing campaign finished with total spend of $118,200 against the $120,000 budget.
+Newsletter sign-ups grew by 31%, beating the 25% goal.
+
+## Decisions
+- We agreed to keep TikTok as the main paid social channel in Q4.
+
+## Action Items
+- [ ] Sara will present the Q3 results to leadership on October 7.
+`;
+const CLOUDNEST = 'INVOICE\n\nFrom: CloudNest Hosting Ltd.\nInvoice Number: INV-1042\nInvoice Date: 2026-07-05\nBill To: Agentic Drive Team\n\nCloud hosting subscription (July)    $1,000.00\nManaged database add-on                $150.00\nTax                                    $100.00\nTotal Due: $1,250.00\n\nPayment terms: Net 15.';
+const SKYWAY = 'SKYWAY TRAVEL AGENCY\nInvoice\n\nVendor: Skyway Travel Agency\nInvoice #: INV-2207\nDate: 2026-08-02\nBill To: Agentic Drive Team\n\nReturn flight Karachi - Dubai (trade show), 1 traveller    $612.40\nHotel, 2 nights                                            $230.20\nTotal: $842.60';
+// An invoice a studio SENT to its client: an expense row unless that studio is the configured own company.
+const SENT_INVOICE = '# INVOICE\n\nFrom: Example Studio (Pvt.) Ltd.\nBill To: Northwind Health\nInvoice Number: INV-0912\nInvoice Date: 2026-09-15\nPayment terms: Net 30\n\nDiscovery workshops (4 days)    $2,400.00\nUX research (6 days)            $3,600.00\n\nTotal Due: $10,800.00';
+const BUDGET_CSV = 'line_item,department,q3_budget,spent_to_date,remaining,cost_center\nPaid social ads,Marketing,60000,41200,18800,MKT-01\nEvents,Marketing,25000,0,25000,MKT-03\nCloud hosting,Engineering,12000,11250,750,ENG-01\n';
+const SPEC = `# Mobile App v2 — Engineering Spec
+
+Owner: Engineering team
+Status: Draft
+
+## Requirements
+- The app must sync a 10 MB file in under 5 seconds on 4G.
+- Users must be able to open recent files without an internet connection.
+- The backend API should return search results in under 300 ms.
+
+## Architecture
+The frontend will use React Native. The backend API will run on Node.js with a PostgreSQL database.
+
+## Release plan
+Beta release to internal testers in sprint 14; public release in sprint 16.
+`;
+const printhubPdf = () => makePdf({ title: 'PrintHub Studio', subtitle: 'INVOICE', lines: [
+  'Invoice Number: INV-3310',
+  'Invoice Date: 2026-07-20',
+  'Bill To: Agentic Drive Team, Marketing Department',
+  '',
+  'Summer Switch campaign flyers (5,000)      $1,980.00',
+  'Event banners (4)                          $1,500.00',
+  'Total Due: $3,480.00',
+] });
 
 test('status is offline without keys', async () => {
   assert.deepEqual((await json('/api/status')).body, { aiProvider: null, model: null });
 });
 
-test('samples load and every agent result is visible', async () => {
-  const r = await json('/api/samples', { method: 'POST' });
+test('uploaded files are filed and every agent result is visible', async () => {
+  const r = await upload([
+    ['q3-marketing-kickoff.md', KICKOFF],
+    ['q3-marketing-midpoint-review.md', MIDPOINT],
+    ['q3-marketing-wrapup.md', WRAPUP],
+    ['invoice-cloudnest-INV-1042.txt', CLOUDNEST],
+    ['invoice-skyway-travel-INV-2207.txt', SKYWAY],
+    ['invoice-printhub-INV-3310.pdf', await printhubPdf()],
+    ['invoice-example-studio-INV-0912.md', SENT_INVOICE],
+    ['q3-budget.csv', BUDGET_CSV],
+    ['mobile-app-v2-spec.md', SPEC],
+  ]);
   assert.equal(r.status, 200);
-  // Other samples may be added over time, so assert on known files, not on counts.
+  assert.deepEqual(r.body.errors, []);
   const expected = {
     'q3-marketing-kickoff.md': ['meeting', 'Marketing'],
     'q3-marketing-midpoint-review.md': ['meeting', 'Marketing'],
@@ -53,10 +144,10 @@ test('samples load and every agent result is visible', async () => {
     'invoice-cloudnest-INV-1042.txt': ['invoice', 'Finance'],
     'invoice-skyway-travel-INV-2207.txt': ['invoice', 'Finance'],
     'invoice-printhub-INV-3310.pdf': ['invoice', 'Finance'],
+    'invoice-example-studio-INV-0912.md': ['invoice', 'Finance'],
     'q3-budget.csv': ['data', 'Finance'],
     'mobile-app-v2-spec.md': ['spec', 'Engineering'],
   };
-  for (const name of Object.keys(expected)) assert.ok(r.body.loaded.includes(name), `${name} not loaded`);
   for (const [name, [kind, topic]] of Object.entries(expected)) {
     const f = await byName(name);
     assert.ok(f, `${name} missing`);
@@ -78,8 +169,6 @@ test('samples load and every agent result is visible', async () => {
   assert.deepEqual([items.kind, items.topic, items.generated], ['meeting', 'Marketing', true]);
   const act = (await json('/api/activity')).body.activity;
   assert.ok(act.some((a) => a.agent === 'Organizer' && /^Filed "mobile-app-v2-spec\.md" under Specs & Plans \(topic: Engineering, confidence: (high|medium)\)\.$/.test(a.message)));
-  const again = await json('/api/samples', { method: 'POST' });
-  for (const name of r.body.loaded) assert.ok(again.body.skipped.includes(name), `${name} was loaded twice`);
 });
 
 test('a file the classifier cannot place goes to Other with a "not sure" note', async () => {
@@ -254,16 +343,14 @@ test('generated expenses.csv gets a descriptive summary', async () => {
   assert.match(csv.summary, /^Spreadsheet with \d+ rows\. Columns: date, vendor, invoice_number/);
 });
 
-test('samples are dated from the first ISO date in their text; uploads and generated files keep "now"', async () => {
+test('createdAt is when a file was added, not a date in its text; generated files keep their write time', async () => {
   const recent = (iso) => Math.abs(Date.now() - Date.parse(iso)) < 10 * 60 * 1000;
-  assert.equal((await byName('q3-marketing-kickoff.md')).createdAt, '2026-07-02T09:00:00.000Z');
-  assert.equal((await byName('finance-sync-2026-08-21.md')).createdAt, '2026-08-21T09:00:00.000Z');
-  // No ISO date in the text -> left as the load time.
+  // The kickoff's text says "Date: 2026-07-02"; it is still dated by its upload.
+  assert.ok(recent((await byName('q3-marketing-kickoff.md')).createdAt));
   assert.ok(recent((await byName('mobile-app-v2-spec.md')).createdAt));
-  // Files the automations wrote while loading samples are not samples.
+  // Files the automations wrote are dated when they were written.
   assert.ok(recent((await byName('q3-marketing-kickoff - action items.md')).createdAt));
   assert.ok(recent((await byName('expenses.csv')).createdAt));
-  // A real upload keeps its upload time even when its text has a date.
   await upload([['dated-note.md', 'Date: 2020-01-15\nA note about the 2020 planning offsite and its outcomes.']]);
   assert.ok(recent((await byName('dated-note.md')).createdAt));
 });
@@ -279,32 +366,29 @@ test('action-items files get a summary naming the count, source and first item, 
   assert.equal(files[0].summary, '2 action items from retro.md — Omar will send the notes.');
 });
 
-test('invoices the drive\'s own company sent are not expenses; the company name is configurable', async () => {
+test('with no own company set, every invoice is an expense, including one a studio sent', async () => {
   const csv = (await json(`/api/files/${(await byName('expenses.csv')).id}`)).body.text;
-  assert.doesNotMatch(csv, /INV-0912/);
+  assert.match(csv, /INV-0912.*10800\.00/);
   assert.match(csv, /INV-1042/);
   const act = (await json('/api/activity')).body.activity;
-  assert.ok(act.some((a) => a.agent === 'Automations' && a.message === 'INV-0912 is an invoice you sent (from Brightleaf Labs), so it was not logged as an expense.'));
-  // ownCompany passed to createApp wins over the default: here CloudNest is "us".
+  assert.ok(!act.some((a) => /is an invoice you sent/.test(a.message)));
+});
+
+test('invoices the configured own company sent are not expenses', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'drive-own-'));
-  const app = createApp({ dataDir: dir, llm: createLlm({}), samplesDir: path.join(here, '..', 'src', 'samples'), ownCompany: 'CloudNest Hosting' });
+  const app = createApp({ dataDir: dir, llm: createLlm({}), ownCompany: 'Example Studio' });
   const srv = await new Promise((r) => { const s = app.listen(0, () => r(s)); });
   const at = `http://127.0.0.1:${srv.address().port}`;
   try {
-    await upload([['cn.txt', 'INVOICE\nFrom: CloudNest Hosting Ltd.\nInvoice Number: INV-1042\nHosting\nTotal Due: $1,250.00']], at);
-    await upload([['bl.txt', 'INVOICE\nFrom: Brightleaf Labs (Pvt.) Ltd.\nInvoice Number: INV-0912\nDiscovery\nTotal Due: $10,800.00']], at);
+    await upload([['cn.txt', CLOUDNEST]], at);
+    await upload([['sent.md', SENT_INVOICE]], at);
     const own = (await json('/api/files', {}, at)).body.files.find((f) => f.name === 'expenses.csv');
     const ledger = (await json(`/api/files/${own.id}`, {}, at)).body.text;
-    assert.doesNotMatch(ledger, /INV-1042/);
-    assert.match(ledger, /INV-0912/);
+    assert.match(ledger, /INV-1042/);
+    assert.doesNotMatch(ledger, /INV-0912/);
+    const act = (await json('/api/activity', {}, at)).body.activity;
+    assert.ok(act.some((a) => a.agent === 'Automations' && a.message === 'INV-0912 is an invoice you sent (from Example Studio), so it was not logged as an expense.'));
   } finally {
     srv.close();
   }
-});
-
-test('sampleDate takes the first valid ISO date at 09:00 UTC', () => {
-  assert.equal(sampleDate('Ref BL-NDA-2026-012, signed 2026-07-14, renewed 2027-01-01'), '2026-07-14T09:00:00.000Z');
-  assert.equal(sampleDate('Bad 2026-13-40 then 2026-02-03'), '2026-02-03T09:00:00.000Z');
-  assert.equal(sampleDate('no dates here'), null);
-  assert.equal(sampleDate(undefined), null);
 });

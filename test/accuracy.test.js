@@ -18,14 +18,6 @@ async function run(dir, labelsPath) {
   return rows;
 }
 
-test('every bundled sample gets its labelled kind and topic', async () => {
-  const rows = await run(path.join(root, 'src/samples'), path.join(root, 'test/fixtures/sample-labels.json'));
-  const files = fs.readdirSync(path.join(root, 'src/samples'));
-  assert.deepEqual(rows.map((r) => r.name).sort(), files.sort(), 'every sample must be labelled');
-  const wrong = rows.filter((r) => r.want.kind !== r.got.kind || r.want.topic !== r.got.topic);
-  assert.deepEqual(wrong, []);
-});
-
 test('holdout: at least 85% of kinds correct, and no brief is an invoice', async () => {
   const dir = path.join(root, 'test/fixtures/holdout');
   const rows = await run(dir, path.join(dir, 'labels.json'));

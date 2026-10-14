@@ -19,19 +19,19 @@
  *   fixed order, with labels) and the 8 topics. PATCH /api/files/:id with
  *   {kind?, topic?} moves + pins a file: 400 for an invalid kind/topic, an
  *   empty or non-object body; 404 for an unknown id (tested, incl. restart).
- * - POST /api/samples (only): each loaded sample's createdAt is the first
- *   valid YYYY-MM-DD date in its text at 09:00 UTC, or the load time when it
- *   has none. Real uploads and the files automations write while samples
- *   load keep their real creation time (tested).
+ * - A file's createdAt is when it was added to the drive, also when its
+ *   text mentions other dates; files the automations write get their own
+ *   write time (tested).
  * - Synthesized files carry the Synthesizer's own one-line summary (tested).
- * - The drive's own company name is env OWN_COMPANY (default "Brightleaf
- *   Labs"), or createApp's `ownCompany`; invoices it sent are not added to
- *   expenses.csv (tested: bundled INV-0912; a custom ownCompany).
+ * - The drive's own company name is createApp's `ownCompany`, else env
+ *   OWN_COMPANY; invoices it sent are not added to expenses.csv (tested with
+ *   a custom ownCompany). There is no default: with neither set the check is
+ *   off and every invoice is logged as an expense (tested).
  * - Synthesized files are kind `report` with the most common non-null topic
  *   of their sources (ties: the first source's), or null (tested).
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
- * - createApp() takes dataDir/llm/samplesDir/ownCompany as arguments so tests run on a
+ * - createApp() takes dataDir/llm/ownCompany as arguments so tests run on a
  *   temp folder with offline agents; hard-coding them would make the tests
  *   wipe or depend on real data and real API keys.
  * - A mixed upload batch returns 200 with per-file `errors`; only a batch
@@ -46,11 +46,13 @@
  * - Do not return API keys or raw provider errors with secrets to the client.
  * - Do not listen() on import — tests import createApp() directly.
  * - Do not re-run automations from PATCH: a move is a label change only.
- * - Do not back-date anything but samples: an upload's createdAt is when the
- *   user added it, whatever dates its text mentions.
+ * - Do not hard-code a default company name for ownCompany: a made-up
+ *   default would silently drop a real supplier's invoices from
+ *   expenses.csv whenever its name happened to match.
+ * - Do not back-date uploads from dates in their text: an upload's createdAt
+ *   is when the user added it, whatever dates its text mentions.
  */
 import path from 'node:path';
-import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import express from 'express';
 import multer from 'multer';
@@ -64,8 +66,6 @@ import { synthesize, FORMATS } from './src/agents/synthesizer.js';
 import { KINDS, TOPICS } from './src/agents/classifier.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-// The company the drive belongs to (the bundled samples' studio); its own invoices are income, not expenses.
-const DEFAULT_OWN_COMPANY = 'Brightleaf Labs';
 
 class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -80,17 +80,7 @@ function mostCommonTopic(docs) {
   return best;
 }
 
-// The first real YYYY-MM-DD date in a sample's text, at 09:00 UTC; null when there is none.
-// "BL-NDA-2026-012" is not a date (\b + two-digit parts), nor is "2026-13-40" (round-trip check).
-export function sampleDate(text) {
-  for (const [iso] of String(text ?? '').matchAll(/\b\d{4}-\d{2}-\d{2}\b/g)) {
-    const d = new Date(`${iso}T09:00:00.000Z`);
-    if (!Number.isNaN(d.getTime()) && d.toISOString().startsWith(iso)) return d.toISOString();
-  }
-  return null;
-}
-
-export function createApp({ dataDir, llm, samplesDir = path.join(here, 'src', 'samples'), ownCompany = process.env.OWN_COMPANY?.trim() || DEFAULT_OWN_COMPANY }) {
+export function createApp({ dataDir, llm, ownCompany = process.env.OWN_COMPANY?.trim() ?? '' }) {
   const store = createStore(dataDir, { defaultRules: DEFAULT_RULES });
   const pipeline = createPipeline({ store, llm, ownCompany });
   pipeline.migrate();
@@ -149,20 +139,6 @@ export function createApp({ dataDir, llm, samplesDir = path.join(here, 'src', 's
       return res.status(400).json({ error: errors[0]?.error ?? 'No files were uploaded.', errors });
     }
     res.json({ files, errors });
-  });
-
-  app.post('/api/samples', async (req, res) => {
-    const loaded = [];
-    const skipped = [];
-    for (const name of fs.readdirSync(samplesDir).sort()) {
-      if (store.findByName(name)) { skipped.push(name); continue; }
-      const record = await pipeline.ingest({ name, buffer: fs.readFileSync(path.join(samplesDir, name)), source: 'sample' });
-      // Samples are dated by their content, so the demo drive doesn't show 32 files from "just now".
-      const createdAt = sampleDate(store.get(record.id)?.text);
-      if (createdAt) store.update(record.id, { createdAt });
-      loaded.push(name);
-    }
-    res.json({ loaded, skipped });
   });
 
   app.post('/api/ask', async (req, res) => {

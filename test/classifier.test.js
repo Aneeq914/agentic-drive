@@ -83,7 +83,7 @@ test('invoice labels only count at the start of a line, not mid-sentence', () =>
   assert.equal(k('Total due: $40.00\nBill to: Acme', 'n.txt').kind, 'invoice');
 });
 
-// ── Task 6 accuracy rules: each test uses a new short text, not a sample or holdout file. ──
+// ── Task 6 accuracy rules: each test uses a new short text, not a holdout file. ──
 
 test('a Statement of Work with a signature block is a contract, even with deliverables', () => {
   const t = '# Statement of Work 3\nThis SOW is entered into between Lumen Co ("Client") and Pixelworks ("Vendor").\n## Services\nVendor will build two landing pages.\n## Deliverables\n- Landing pages\nSigned for Client: ________';

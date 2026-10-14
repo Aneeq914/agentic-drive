@@ -27,7 +27,7 @@
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
  * - Table rows are dropped before markers are stripped: once "|" is gone a
  *   row like "Average engagement time 1m 38s 1m 52s +14s" has 6+ words and
- *   wins as "the first real sentence" (the website-analytics sample did).
+ *   wins as "the first real sentence" (a website-analytics report's did).
  * - The byline check is case-sensitive ("By" + capitalised words): with a
  *   case-insensitive match "by the end of the week we will…" is a byline
  *   (tested).
@@ -40,7 +40,8 @@
  *
  * ── DO NOT ──
  * - Do not change splitSentences() to fix a summary: Search splits answer
- *   lines with it and its demo answers are tuned against that splitting.
+ *   lines with it and its answer tests (search.test) are tuned against that
+ *   splitting.
  * - Do not make the byline/notice patterns broader without a test: each one
  *   removes candidate sentences from every file in the drive.
  */

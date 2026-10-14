@@ -19,7 +19,7 @@
 
 ## Global Constraints
 
-- **Project root:** `/home/aneeq914/Desktop/uni/agentic-drive/`. Every path below is relative to it.
+- **Project root:** the repository root. Every path below is relative to it.
 - **Module format:** ESM everywhere (`"type": "module"`). Use `import`/`export` and no `require`. Get the current directory from `import.meta.url` (`__dirname` is undefined in ESM).
 - **Node:** the machine has v22.23.1. Run with `node --env-file-if-exists=.env`. There is no dotenv package.
 - **Commands:** `npm start` serves http://localhost:3000 (overridable with `PORT`). `npm test` runs `node --test "test/**/*.test.js"`.
@@ -118,7 +118,7 @@ ANTHROPIC_API_KEY=
 # PORT=3000
 ```
 
-Run: `cd /home/aneeq914/Desktop/uni/agentic-drive && git init && npm install`
+Run: `cd agentic-drive && git init && npm install`
 Expected: the install succeeds and `node_modules/` exists.
 
 - [ ] **Step 2: Write the failing test** `test/text.test.js`

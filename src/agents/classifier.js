@@ -26,7 +26,8 @@
  * - Invoice gate (spec §4): a file is only an invoice with 2+ distinct invoice
  *   structure signals AND a money amount; otherwise its invoice score is
  *   capped at 2. Verified by the test where a hackathon brief that describes
- *   an invoice workflow comes out `proposal`, and by the real brief PDF.
+ *   an invoice workflow comes out `proposal`, and by the holdout check that
+ *   no brief is filed as an invoice (accuracy.test).
  * - Confidence (spec §4): high = top ≥ 6 and leads by ≥ 3; medium = top ≥ 3
  *   and leads by ≥ 1.5; otherwise low, and low is filed as `other` (plan
  *   Review Focus #2). Empty text is `other`/low.
@@ -58,8 +59,10 @@
  *     include prototype/hackathon/stack/llm and incident words (config,
  *     rollback, outage, incident, kubernetes); Operations words include
  *     furniture/movers/relocation/premises (office moves).
- *   Measured when tuned: test/accuracy.test.js gave 32/32 samples (kind +
- *   topic) and 16/16 holdout kinds (the test itself requires 100% / ≥ 85%).
+ *   Measured when tuned: 32/32 (kind + topic) on the demo files then bundled
+ *   with the app (since removed from the repo) and 16/16 holdout kinds.
+ *   test/accuracy.test.js now requires ≥ 85% of holdout kinds, and ≥ 75% of
+ *   the blind holdout-2 kinds with every miss filed as `other`.
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
  * - Structure (×3) outweighs mentions and body words are capped. Without
@@ -94,7 +97,7 @@
  *   grow uncapped: both bring back "brief filed as invoice".
  * - Do not add the `g` flag to STRUCTURE regexes: `.test()` on a global regex
  *   keeps `lastIndex` between calls and silently skips matches on later files.
- * - Do not add file-name-specific rules for one sample; add a general pattern
+ * - Do not add file-name-specific rules for one file; add a general pattern
  *   and a unit test for it.
  * - Do not tune by copying phrases from test/fixtures/holdout/: it is the
  *   check that the rules generalise. Never edit labels to make tests pass.

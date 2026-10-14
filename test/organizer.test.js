@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { makePdf, RESUME } from './helpers/pdf.js';
 import * as organizer from '../src/agents/organizer.js';
 
 const { organizeOffline, organize, offlineSummary } = organizer;
@@ -119,11 +120,10 @@ test('offline summaries: a receipt says "Receipt", ALL-CAPS vendors are title-ca
 test('offline summaries: a resume reads "<Name> — <title>", other people files use a real sentence', async () => {
   const resume = 'Priya Nair\nProduct Designer\nDubai, UAE (open to relocating to Lahore) | priya.nair@example.com | +971 50 000 4821 |\nSummary\nProduct designer with 7 years of experience in e-commerce and healthcare apps.';
   assert.equal(offlineSummary('people', '.pdf', resume), 'Priya Nair — Product Designer');
-  // The bundled resume PDF, through the real extractor.
+  // A real resume PDF (20pt name, 14pt title below it), built in memory and read through the real extractor.
   const { extractText } = await import('../src/extract.js');
-  const fs = await import('node:fs');
   const name = 'resume-priya-nair-product-designer.pdf';
-  const pdfText = await extractText(fs.readFileSync(new URL(`../src/samples/${name}`, import.meta.url)), name);
+  const pdfText = await extractText(await makePdf(RESUME), name);
   assert.equal(organizeOffline({ name, ext: '.pdf', text: pdfText }).summary, 'Priya Nair — Product Designer');
   // A policy or job description is not a name + title.
   const policy = '# Remote and Hybrid Work Policy\n**Policy owner:** Usman Tariq\n\n## 1. Why this policy exists\nSince we moved to the Gulberg office, we have a space built for working together.';

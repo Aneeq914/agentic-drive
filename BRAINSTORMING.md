@@ -4,9 +4,10 @@ This is the thinking we did before writing code: what is wrong with cloud storag
 wanted to change, which ideas we kept or dropped, and the four agent flows we designed the product
 around. Section 8 adds what we learned when we rebuilt the Organizer in a second iteration.
 
-Every example below uses the sample files that ship with the app (`src/samples/`). There are 32
-documents from Brightleaf Labs, a made-up product studio in Lahore, covering Q3 2026. Each flow can be
-reproduced with one click on "Load sample files".
+The examples below use the kinds of files a small team keeps: invoices and receipts, meeting
+notes, contracts, proposals, specs and spreadsheets. While building, we tested against a set of
+mock company documents; that mock data was removed before the repository was published, so the app
+starts with an empty drive. To reproduce a flow, upload a few of your own files of those kinds.
 
 ## 1. The problem
 
@@ -59,13 +60,13 @@ active shift, can it be demoed in seconds, and can it work without an AI key?
 | 6 | Activity feed of everything the agents did | **Built** | Autonomy without explanation feels like magic in a bad way |
 | 7 | Works offline, upgrades with a Gemini or Claude key | **Built** | Judges and users can run it free; AI is an upgrade, not a requirement |
 | 8 | "Other / Needs a look" for unsure files, plus a human "Move to…" that pins the file | **Built** (iteration 2) | A wrong but confident shelf hides a file; an honest "not sure" doesn't |
-| 9 | Accuracy tests against labelled samples and blind holdout sets | **Built** (iteration 2) | Without a number we could not tell whether a rule change helped or just moved the mistakes around |
+| 9 | Accuracy tests against labelled holdout sets, one of them written blind | **Built** (iteration 2) | Without a number we could not tell whether a rule change helped or just moved the mistakes around |
 | 10 | Learn from the user's moves (re-train on "Move to…") | Later | Needs enough moves to learn from, and a way to undo a bad lesson |
 | 11 | Duplicate and version detection ("final_v3_REAL.docx") | Later | Valuable, but needs content similarity across whole files; only invoice-number de-duplication made it in |
 | 12 | Deadline reminders pulled from contracts | Later | Needs reliable date extraction plus a notification channel |
 | 13 | "Explain this spreadsheet" in plain English | Later | Good fit, but CSV narration is its own project |
-| 14 | Budget vs. actual check (invoices against `q3-budget.csv`) | Later | The best cross-reference idea we had; needs line-item matching we could not finish in time |
-| 15 | Contradiction finder ("kickoff says $120k, wrap-up implies more") | Later | Very "aha", but easy to get wrong without a strong model |
+| 14 | Budget vs. actual check (invoices against a budget spreadsheet in the drive) | Later | The best cross-reference idea we had; needs line-item matching we could not finish in time |
+| 15 | Contradiction finder ("the kickoff says $120k, the wrap-up implies more was spent") | Later | Very "aha", but easy to get wrong without a strong model |
 | 16 | User-defined automation rules ("when X lands in Y, do Z") | Later | Two fixed rules with toggles were enough to prove the idea |
 | 17 | Vector database for search | Dropped | BM25 keyword ranking plus a synonym list works offline on a small drive; no extra service to install |
 | 18 | Voice notes transcription | Dropped | Scope: audio needs a speech model and a different upload path |
@@ -113,9 +114,8 @@ automation runs again for it.
 ## 5. The four agentic user flows
 
 ### Flow 1: Proactive organisation ("I never made a folder")
-1. Start with an empty drive and click "Load sample files". This loads 32 Brightleaf documents:
-   meeting notes, invoices and receipts, contracts, proposals, specs, reports, spreadsheets and
-   HR files.
+1. Start with an empty drive and drag in a mixed batch of files: a few invoices, some meeting
+   notes, a contract, a spec, a project brief and a spreadsheet.
 2. The Organizer reads each one and decides:
    - its **kind**, which is the shelf it sits on (Invoices & Receipts, Meeting Notes, Contracts &
      Agreements, Proposals & Briefs, Specs & Plans, Reports, Spreadsheets & Data, People & HR, or
@@ -124,58 +124,54 @@ automation runs again for it.
    - how sure it is
    - a handful of tags and a one-line summary
 3. **Aha!** The categories fill up in the sidebar, with counts, and nobody created them.
-   - The internal hackathon problem statement talks about invoices, yet it lands in Proposals &
-     Briefs, because it is built like a brief, not like a bill.
-   - The PrintHub invoice talks about a marketing campaign, yet its topic is Finance, because an
-     invoice is a finance document first.
+   - A project brief that talks about invoices lands in Proposals & Briefs, because it is built
+     like a brief, not like a bill.
+   - An invoice for a marketing campaign still gets the topic Finance, because an invoice is a
+     finance document first.
 4. Upload something that fits no category well, such as a staff newsletter. It goes to Other and
    shows up under "Needs a look". One "Move to…" puts it right and pins it there.
 
 ### Flow 2: Semantic retrieval ("ask, don't dig")
-1. Press Ctrl+K (⌘K on a Mac) to open the "Ask your drive…" bar. Type the brief's own question:
-   *"What was the budget discussed in the Q3 marketing meetings?"*
+1. Press Ctrl+K (⌘K on a Mac) to open the "Ask your drive…" bar. Type a question in the style of
+   the brief's own example: *"What was the budget discussed in the Q3 marketing meetings?"*
 2. Search splits every file into passages, widens the question with synonyms (budget also
    means spend, cost, allocation), and ranks the passages. It favours passages that cover the
    whole question, not just one word of it.
-3. **Aha!** Instead of a list of files, you get the answer itself, pulled from all three meetings,
-   and each line has a `[n]` citation:
-   - $120,000 approved at the kickoff
-   - $64,500 of it spent by the mid-point review
-   - $118,200 spent by the wrap-up
+3. **Aha!** Instead of a list of files, you get the answer itself: up to three lines pulled from
+   the meetings that discussed the budget (the approved amount, the spend so far, the final
+   figure), each with its own `[n]` citation.
 
    Click a citation and that meeting's notes open in the preview drawer. The same bar answers
-   questions about the PDF invoices, the Acme contract or the budget spreadsheet, because every
-   format is just text to the agent. Ask about a company that isn't in the drive and it says so
-   instead of guessing.
+   questions about PDF invoices, contracts or a budget spreadsheet, because every format is just
+   text to the agent. Ask about a company that isn't in the drive and it says so instead of
+   guessing.
 
 ### Flow 3: Cross-document synthesis ("three meetings, one document")
-1. Tick the three Q3 marketing meeting notes (kickoff, mid-point review, wrap-up).
+1. Tick several meeting notes about the same project, for example a kickoff, a mid-point review
+   and a wrap-up.
 2. A floating bar appears: "3 selected → Combine into Requirements / Summary / Compare". Pick one.
-3. The Synthesizer pulls out decisions, requirements, action items and money figures from all three.
-4. **Aha!** A new document opens that tells the whole quarter's story, which no single file
-   contains:
-   - $120,000 approved
-   - $64,500 spent by the mid-point, and $10,000 moved from events to TikTok ads
-   - $118,200 spent in total, with $1,800 rolling over to Q4
-
-   A Sources section lists the three files it came from, and the document is kept under
-   "Generated".
+3. The Synthesizer pulls out decisions, requirements, action items and money figures from all of
+   them.
+4. **Aha!** A new document opens that tells the whole project's story, which no single file
+   contains: what was approved, what changed along the way, and what was finally spent. A Sources
+   section lists the files it came from, and the document is kept under "Generated".
 
 ### Flow 4: Automated workflows ("the paperwork does itself")
-1. The samples include invoices in different layouts, all handled the same way:
-   - CloudNest (text, "From:" line)
-   - Skyway Travel (text, "Vendor:" line)
-   - PrintHub and OfficeWorks (PDFs)
-   - a cafe receipt with no invoice number
+1. Upload invoices in different layouts. They are all handled the same way:
+   - a plain-text invoice with a "From:" line
+   - one with a "Vendor:" line instead
+   - a PDF invoice (with a text layer)
+   - a receipt with no invoice number
 2. The invoice-to-CSV automation fires on each file filed as an invoice, with no click. It reads the
-   vendor, invoice number, date and total, and picks a category.
+   vendor, invoice number, date and total, and picks a category (Software, Travel, Marketing,
+   Office, Utilities or Other).
 3. **Aha!** `expenses.csv` appears under Spreadsheets & Data (topic Finance) and fills itself, one
-   row per invoice. For example: $1,250.00 for CloudNest, $842.60 for Skyway Travel and $3,480.00
-   for PrintHub. Upload the same invoice again and no duplicate row is added.
+   row per invoice. Upload the same invoice again and no duplicate row is added. An invoice your
+   own company sent (its vendor matches the `OWN_COMPANY` setting) is income, so it is not logged.
    - Meeting notes that only *discuss* overdue invoices are not logged, because they are filed as
      Meeting Notes, not as invoices.
-4. Upload meeting minutes and an action-items file appears with the same topic, listing each owner
-   and due date. For example: "Hina will set up the paid social ad accounts by July 10".
+4. Upload meeting minutes with an "Action items" section and an action-items file appears with the
+   same topic, listing each item, for example "Sara to send the draft by Oct 20".
 5. The activity feed records each step. Turn the rule off in the Automations panel and the next
    invoice is only filed, not logged.
 
@@ -200,18 +196,23 @@ automation runs again for it.
   - one "Ask your drive…" bar
   - a sidebar of categories
   - a bar that appears when you tick files
-  - one button to load a full demo
+  - one Upload button, or drag and drop anywhere
 
 ## 7. Demo script for the 3-minute video
+
+Before recording, prepare about ten of your own files (see the README's demo walkthrough for what
+works well): a few invoices from different vendors, two or three meeting notes about one project
+with action items, a contract, a spec, a project brief that mentions invoices, a budget `.csv`, and
+one odd file such as a staff newsletter. Start the app on an empty drive.
 
 | Time | What we show | What we say |
 |---|---|---|
 | 0:00–0:20 | A messy normal drive, then our empty drive | "Cloud drives are filing cabinets. They store files but never read them." |
-| 0:20–0:50 | Click "Load sample files". Categories with counts and topic chips appear. Open Proposals & Briefs to show the hackathon brief, which is not in Invoices | "We never made a folder. The Organizer read every file and filed it by what it is, not by which words it happens to use." |
-| 0:50–1:05 | Upload a staff newsletter; it lands in "Needs a look"; use Move to… → Reports | "When it isn't sure, it says so. One click fixes it, and it stays fixed." |
+| 0:20–0:50 | Drag the batch of files onto the empty drive. Categories with counts and topic chips appear. Open Proposals & Briefs to show the brief, which is not in Invoices | "We never made a folder. The Organizer read every file and filed it by what it is, not by which words it happens to use." |
+| 0:50–1:05 | Upload the newsletter; it lands in "Needs a look"; use Move to… → Reports | "When it isn't sure, it says so. One click fixes it, and it stays fixed." |
 | 1:05–1:30 | Open `expenses.csv` (one row per invoice, including the PDFs) and an action-items file; open Agent activity | "Invoices logged themselves. Meetings produced their own to-do list. The feed shows every step." |
-| 1:30–2:00 | Ctrl+K: "What was the Q3 marketing budget?", then "What are the Acme payment terms?"; click `[1]` | "A direct answer, and a citation you can check in one click." |
-| 2:00–2:30 | Tick the three Q3 meetings, then Combine into → Requirements; the new document opens | "Three meetings in, one document out: decisions, money and actions across the whole quarter, with sources." |
+| 1:30–2:00 | Ctrl+K: ask what was decided about the budget, then for the payment terms in the contract; click `[1]` | "A direct answer, and a citation you can check in one click." |
+| 2:00–2:30 | Tick the project's meeting notes, then Combine into → Requirements; the new document opens | "Several meetings in, one document out: decisions, money and actions across the whole project, with sources." |
 | 2:30–2:50 | Toggle the invoice rule off; point at the AI status pill (offline or Gemini/Claude) | "You stay in control, and it runs with or without an AI key." |
 | 2:50–3:00 | Back to the full drive | "Agentic Drive: storage that does the work the moment a file arrives." |
 
@@ -251,9 +252,10 @@ type only as a badge, so one bad type guess also dragged the file into the wrong
 - **Moving never re-runs automations.** Moving a report into Invoices never quietly adds a row to
   `expenses.csv`.
 
-**Measure on documents you haven't tuned on.** We wrote 32 samples with decoys built to fool us,
-then a holdout set of 16 tricky texts. After tuning, the scores looked great: 32/32 and 16/16. But we had
-tuned the rules on both sets, so those numbers flatter us.
+**Measure on documents you haven't tuned on.** During development we wrote mock company
+documents with decoys built to fool us (that mock data was removed before publishing), then a
+holdout set of 16 tricky texts. After tuning, the holdout score looked great: 16/16. But we had
+tuned the rules against it too, so that number flatters us.
 
 So after tuning we wrote a fresh, blind set of 20 documents (holdout-2), and we never tune against
 it. On holdout-2 the classifier gets **16 of 20 kinds right (80%)**, and all 4 misses land in
@@ -265,7 +267,7 @@ loop, which a perfect-looking score never would have.
 
 **Smaller lessons.**
 
-- Sample data needs decoys, or every rule looks good.
+- Test data needs decoys, or every rule looks good.
 - A rule written for one file ("if the name contains X") always passes its test and teaches nothing.
   We only add general patterns with their own unit tests.
 - Old drives must keep working: on startup, files from version 1 are re-sorted offline with no AI
@@ -277,8 +279,8 @@ loop, which a perfect-looking score never would have.
   classifier, with an undo.
 - **Better topics:** topic labels are the weakest part offline. An AI key helps, and the offline
   keyword lists need more work.
-- **Budget vs. actual:** match every logged invoice against `q3-budget.csv` and warn when a cost
-  centre is close to its limit.
+- **Budget vs. actual:** match every logged invoice against a budget spreadsheet in the drive and
+  warn when a cost centre is close to its limit.
 - **Contradiction and change alerts:** flag when a new document disagrees with an older one
   ("wrap-up spend differs from the kickoff plan by X").
 - **Deadline radar:** collect every "by <date>" from action items and contracts into one timeline.

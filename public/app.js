@@ -179,7 +179,6 @@
     status: $('ai-status'),
     btnUpload: $('btn-upload'),
     fileInput: $('file-input'),
-    btnSamples: $('btn-samples'),
     btnMenu: $('btn-menu'),
     sidebar: $('sidebar'),
     navScrim: $('nav-scrim'),
@@ -495,7 +494,6 @@
       el.navDrive.innerHTML = DRIVE_VIEWS.map((v) => navItem(v.id, v.label, icon(v.icon), '')).join('');
       el.navKinds.innerHTML = '';
       el.navTopicsSection.hidden = true;
-      el.btnSamples.hidden = true;
       return;
     }
     const counts = {
@@ -531,9 +529,6 @@
       return '<button type="button" class="topic-btn ' + escapeHtml(topicClass(t)) + (n || on ? '' : ' is-zero') + '" data-topic="' + escapeHtml(t) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
         '<span class="dot"></span>' + escapeHtml(t) + '<span class="topic-count">' + escapeHtml(n) + '</span></button>';
     }).join('');
-
-    // Offer the demo files until they are loaded, even when the drive already holds the user's own uploads.
-    el.btnSamples.hidden = !(state.filesLoaded && !state.filesError && !files.some((f) => f.source === 'sample'));
   }
 
   /* ───────────────────────── Main area ───────────────────────── */
@@ -703,10 +698,9 @@
       renderHeader([]);
       el.files.innerHTML = stateBlock({
         big: true, art: EMPTY_ART, title: 'Your drive is empty',
-        text: 'Drop in invoices, meeting notes, contracts or spreadsheets. The agents sort them, pull out what matters, and answer questions about them.',
-        actions: '<button type="button" class="btn btn-primary" data-action="samples">' + icon('sparkle') + '<span class="btn-label">Load sample files</span></button>' +
-                 '<button type="button" class="btn btn-secondary" data-action="upload">' + icon('upload') + '<span>Upload</span></button>',
-        hint: icon('info') + '<span>Or drag files anywhere onto this window</span>',
+        text: 'Upload invoices, meeting notes, contracts or spreadsheets. The agents sort them, pull out what matters, and answer questions about them.',
+        actions: '<button type="button" class="btn btn-primary" data-action="upload">' + icon('upload') + '<span>Upload files</span></button>',
+        hint: icon('info') + '<span>Or drag .txt, .md, .csv or .pdf files anywhere onto this window</span>',
       });
       return;
     }
@@ -1207,7 +1201,7 @@
     if (f.generated) meta.push('<span class="meta-flag is-gen">' + icon('sparkle') + 'Generated</span>');
     const metaHtml = meta.join('<span class="sep" aria-hidden="true"></span>');
     const created = fullDate(f.createdAt);
-    const sub = [created ? 'Added ' + created : '', formatSize(f.size), f.source === 'upload' ? 'Uploaded by you' : f.source === 'sample' ? 'Sample file' : ''].filter(Boolean).join(' · ');
+    const sub = [created ? 'Added ' + created : '', formatSize(f.size), f.source === 'upload' ? 'Uploaded by you' : ''].filter(Boolean).join(' · ');
 
     const topicBtn = f.topic
       ? '<span class="dot ' + escapeHtml(topicClass(f.topic)) + '"></span><span>' + escapeHtml(f.topic) + '</span>'
@@ -1451,7 +1445,7 @@
     });
   }
 
-  /* ───────────────────────── Upload + samples ───────────────────────── */
+  /* ───────────────────────── Upload ───────────────────────── */
 
   function uploadFiles(fileList) {
     const files = Array.from(fileList || []);
@@ -1496,29 +1490,6 @@
       state.uploading = false;
       setBusy(el.btnUpload, false);
       el.fileInput.value = '';
-    });
-  }
-
-  let samplesBusy = false;
-  function loadSamples(button) {
-    if (samplesBusy) return;
-    samplesBusy = true;
-    const btn = button || el.btnSamples;
-    setBusy(btn, true, 'Loading samples…');
-    api('/api/samples', { method: 'POST' }).then((data) => {
-      const loaded = (data && data.loaded) || [];
-      const skipped = (data && data.skipped) || [];
-      if (loaded.length) toast('success', 'Loaded ' + plural(loaded.length, 'sample file'), ['Open Agent activity to see what the agents did.']);
-      else if (skipped.length) toast('info', 'The sample files are already in your drive');
-      else toast('info', 'No sample files were found');
-      state.view = 'all';
-      state.topic = null;
-      return Promise.all([loadFiles(), pollActivity()]);
-    }).catch((err) => {
-      toast('error', "Couldn't load the samples", [err.message]);
-    }).then(() => {
-      samplesBusy = false;
-      if (btn.isConnected) setBusy(btn, false);
     });
   }
 
@@ -1712,7 +1683,6 @@
     el.cmdKbd.textContent = IS_MAC ? '⌘K' : 'Ctrl K';
     el.btnUpload.addEventListener('click', () => el.fileInput.click());
     el.fileInput.addEventListener('change', () => uploadFiles(el.fileInput.files));
-    el.btnSamples.addEventListener('click', () => loadSamples(el.btnSamples));
     el.btnMenu.addEventListener('click', () => toggleNav());
     $('btn-nav-close').addEventListener('click', () => { toggleNav(false); el.btnMenu.focus(); });
     el.navScrim.addEventListener('click', () => toggleNav(false));
@@ -1758,7 +1728,6 @@
       if (action) {
         const a = action.getAttribute('data-action');
         if (a === 'upload') el.fileInput.click();
-        else if (a === 'samples') loadSamples(action);
         else if (a === 'clear-filter') { el.filter.value = ''; state.filter = ''; renderMain(); el.filter.focus(); }
         else if (a === 'clear-topic') { state.topic = null; renderSidebar(); renderMain(); }
         else if (a === 'retry') { state.filesLoaded = false; state.filesError = null; renderMain(); loadFiles().catch(() => {}); }
