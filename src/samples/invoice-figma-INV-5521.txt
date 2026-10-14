@@ -1,0 +1,28 @@
+FIGMA, INC.
+INVOICE
+
+Vendor: Figma, Inc.
+760 Market Street, Floor 10, San Francisco, CA 94102, USA
+Invoice Number: INV-5521
+Invoice Date: 2026-08-01
+Billing period: 2026-08-01 to 2027-07-31 (annual software subscription)
+
+Bill To: Brightleaf Labs
+Attn: Omar Siddiqui (Finance)
+Office 3, Level 2, The Hive Coworking, DHA Phase 5, Lahore 54810, Pakistan
+Customer ID: FG-BRL-20419
+
+Description                                   Qty    Unit price      Amount
+Figma Professional - full seat (annual)         8      $192.00     $1,536.00
+FigJam - collaborator seat (annual)             8       $60.00       $480.00
+Dev Mode - developer seat (annual)              3       $96.00       $288.00
+
+Subtotal                                                           $2,304.00
+Sales tax (export of services)                                         $0.00
+Amount paid by Visa ending 4417 on 2026-08-01                      $2,304.00
+Balance remaining                                                      $0.00
+
+Seats can be reassigned at any time from Admin > Members.
+Questions about this invoice: billing@figma.example
+
+Total: $2,304.00

@@ -14,14 +14,25 @@ test('add, get, list (no text), update, persist across instances', () => {
   const rec = s.add({ name: 'a.md', buffer: Buffer.from('hello'), text: 'hello' });
   assert.equal(rec.ext, '.md');
   assert.equal(rec.size, 5);
-  assert.equal(rec.folder, 'General');
+  assert.deepEqual([rec.kind, rec.topic, rec.confidence, rec.pinned], ['other', null, 'low', false]);
+  assert.equal('type' in rec || 'folder' in rec, false);
   assert.equal('text' in s.list()[0], false);
   assert.equal(s.get(rec.id).text, 'hello');
-  s.update(rec.id, { folder: 'Finance', text: 'HACK', id: 'x' });
+  s.update(rec.id, { topic: 'Finance', text: 'HACK', id: 'x' });
   const again = createStore(dir, { defaultRules: RULES });
-  assert.equal(again.get(rec.id).folder, 'Finance');
+  assert.equal(again.get(rec.id).topic, 'Finance');
   assert.equal(again.get(rec.id).text, 'hello');
   assert.equal(fs.readFileSync(again.filePath(rec.id), 'utf8'), 'hello');
+});
+
+test('update with an undefined value removes that field (used by the type/folder migration)', () => {
+  const dir = tmp();
+  const s = createStore(dir);
+  const rec = s.add({ name: 'a.md', buffer: Buffer.from('x'), text: 'x' });
+  s.update(rec.id, { type: 'invoice', folder: 'Finance' });
+  const r = s.update(rec.id, { kind: 'invoice', type: undefined, folder: undefined });
+  assert.equal('type' in r || 'folder' in r, false);
+  assert.equal('type' in createStore(dir).get(rec.id), false);
 });
 
 test('replaceContent, findByName, remove', () => {

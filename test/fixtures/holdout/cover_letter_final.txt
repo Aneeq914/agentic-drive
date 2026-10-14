@@ -1,0 +1,13 @@
+Dear Hiring Team at Quillmark Studio,
+
+I'm writing to apply for the Data & Reporting Analyst role I saw on your careers page last week.
+
+For the past three years I've been an analyst at a regional logistics firm, where I own the monthly operations report that goes to the leadership team. I rebuilt it from a 40-tab spreadsheet into a set of dashboards, and cut the time to produce it from four days to one afternoon. Along the way I wrote most of our SQL, ran the quarterly customer survey analysis, and became the person people come to when two numbers don't agree.
+
+What draws me to Quillmark is that your work sits right between data and storytelling. I've read several of your published case studies and I'd love to help produce the analysis behind them.
+
+I've attached my CV and a short writing sample. I'm available to start in January and happy to talk whenever suits you.
+
+Kind regards,
+Tomás Ferreira
+tomas.ferreira@example.com

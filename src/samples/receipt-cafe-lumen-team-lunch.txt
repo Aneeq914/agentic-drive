@@ -1,0 +1,33 @@
+CAFE LUMEN
+Coffee - Kitchen - Bakery
+17-C Commercial Zone, MM Alam Road, Gulberg III, Lahore
+Tel: +92 42 3578 1190   NTN: 4419873-2
+
+SALES RECEIPT
+Receipt No: R-20488
+Date: 2026-09-04   Time: 13:42
+Table: 12 (group booking, 14 guests)
+Server: Asad
+
+Qty  Item                                   Amount
+ 6   Grilled chicken bowl                   $45.60
+ 4   Beef smash burger + fries              $34.80
+ 4   Pesto pasta (veg)                      $28.40
+ 3   Loaded nachos (sharing)                $16.50
+14   Mint lemonade                          $25.20
+ 6   Iced Spanish latte                     $19.80
+ 2   Lotus cheesecake (whole)               $27.00
+
+Subtotal                                   $197.30
+GST 5%                                       $9.87
+Service charge (waived for group)            $0.00
+
+Paid: Mastercard ending 2290 (Brightleaf Labs company card)
+Card holder: OMAR SIDDIQUI
+Auth code: 551093
+
+Note on bill: "Brightleaf team lunch - first week in Gulberg"
+
+Thank you for dining with us! Leave a review and get 10% off your next visit.
+
+Total: $207.17

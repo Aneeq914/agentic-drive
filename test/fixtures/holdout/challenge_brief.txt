@@ -1,0 +1,17 @@
+CHALLENGE 3: "WHERE DID THE MONEY GO?"
+Corvid Robotics Internal Hackathon, November 2026
+
+THE PROBLEM
+Our finance team reconciles roughly 900 supplier invoices a month by hand. Each one has to be matched against a purchase order and a goods-received note, and the totals rarely line up exactly: shipping is billed separately, currencies differ, and partial deliveries get invoiced in pieces. Today one analyst spends most of the last week of every month in spreadsheets chasing a few hundred euros of differences.
+
+WHAT WE'RE ASKING YOU TO BUILD
+A prototype that takes a folder of invoices (PDF or email), pulls out the vendor, line items and invoice total, and flags any invoice whose total doesn't match its PO within a tolerance the user can set.
+
+WHAT GOOD LOOKS LIKE
+- Correctly extracts totals from at least 8 of the 10 sample invoices we'll provide
+- Explains *why* something was flagged, in plain language
+- Runs on a laptop; no customer data leaves the building
+
+JUDGING
+Accuracy 40%, usefulness to a non-technical user 40%, demo 20%.
+Teams of 2-4. Sample data will be shared at kickoff.

@@ -1,0 +1,21 @@
+        PELICAN BAY COFFEE CO.
+      214 Harbor Rd, Bayview
+        Tel 555-0148
+
+Order #0412        12/10/2026  08:47
+Server: Jo
+
+1  Oat Flat White          4.60
+1  Almond Croissant        3.95
+1  Drip Coffee (L)         3.20
+   + extra shot            0.75
+                        --------
+Subtotal                  12.50
+Tax 8.25%                  1.03
+TOTAL                     13.53
+
+VISA ****2291             13.53
+Change                     0.00
+
+   Thanks for stopping by!
+ Keep this for returns within 7 days

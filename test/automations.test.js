@@ -65,30 +65,39 @@ test('appendExpenseRow creates header, appends, and dedupes by invoice number', 
 });
 
 test('runAutomations: invoice -> expenses.csv write + log', () => {
-  const r = runAutomations({ record: { name: 'cloudnest.txt', type: 'invoice', folder: 'Finance', generated: false }, text: cloudnest, rules: DEFAULT_RULES, getFileText: () => null });
+  const r = runAutomations({ record: { name: 'cloudnest.txt', kind: 'invoice', topic: 'Finance', generated: false }, text: cloudnest, rules: DEFAULT_RULES, getFileText: () => null });
   assert.equal(r.writes.length, 1);
-  assert.deepEqual([r.writes[0].name, r.writes[0].folder, r.writes[0].type], ['expenses.csv', 'Finance', 'data']);
+  assert.deepEqual([r.writes[0].name, r.writes[0].kind, r.writes[0].topic], ['expenses.csv', 'data', 'Finance']);
+  assert.equal('type' in r.writes[0] || 'folder' in r.writes[0], false);
   assert.match(r.logs[0], /INV-1042.*\$1,250\.00.*expenses\.csv/);
 });
 
 test('runAutomations: invoice without total logs and writes nothing', () => {
-  const r = runAutomations({ record: { name: 'x.txt', type: 'invoice', folder: 'Finance' }, text: 'INVOICE\nnothing', rules: DEFAULT_RULES, getFileText: () => null });
+  const r = runAutomations({ record: { name: 'x.txt', kind: 'invoice', topic: 'Finance' }, text: 'INVOICE\nnothing', rules: DEFAULT_RULES, getFileText: () => null });
   assert.equal(r.writes.length, 0);
   assert.match(r.logs[0], /no total/i);
 });
 
-test('runAutomations: meeting -> action items file in same folder', () => {
+test('runAutomations: meeting -> action items file, kind meeting, topic copied from the meeting', () => {
   const text = '# Kickoff\nAttendees: Sara\n## Action Items\n- [ ] Sara will finalise the brief by July 8.';
-  const r = runAutomations({ record: { name: 'q3-kickoff.md', type: 'meeting', folder: 'Marketing' }, text, rules: DEFAULT_RULES, getFileText: () => null });
+  const r = runAutomations({ record: { name: 'q3-kickoff.md', kind: 'meeting', topic: 'Marketing' }, text, rules: DEFAULT_RULES, getFileText: () => null });
   assert.equal(r.writes[0].name, 'q3-kickoff - action items.md');
-  assert.equal(r.writes[0].folder, 'Marketing');
+  assert.deepEqual([r.writes[0].kind, r.writes[0].topic], ['meeting', 'Marketing']);
+  const noTopic = runAutomations({ record: { name: 'sync.md', kind: 'meeting', topic: null }, text, rules: DEFAULT_RULES, getFileText: () => null });
+  assert.equal(noTopic.writes[0].topic, null);
   assert.match(r.writes[0].content, /- \[ \] Sara will finalise the brief by July 8\./);
 });
 
 test('runAutomations respects disabled rules and skips generated files', () => {
   const off = DEFAULT_RULES.map((r) => ({ ...r, enabled: false }));
-  assert.deepEqual(runAutomations({ record: { name: 'a.txt', type: 'invoice', folder: 'Finance' }, text: cloudnest, rules: off, getFileText: () => null }), { writes: [], logs: [] });
-  assert.deepEqual(runAutomations({ record: { name: 'a.txt', type: 'invoice', folder: 'Finance', generated: true }, text: cloudnest, rules: DEFAULT_RULES, getFileText: () => null }), { writes: [], logs: [] });
+  assert.deepEqual(runAutomations({ record: { name: 'a.txt', kind: 'invoice', topic: 'Finance' }, text: cloudnest, rules: off, getFileText: () => null }), { writes: [], logs: [] });
+  assert.deepEqual(runAutomations({ record: { name: 'a.txt', kind: 'invoice', topic: 'Finance', generated: true }, text: cloudnest, rules: DEFAULT_RULES, getFileText: () => null }), { writes: [], logs: [] });
+});
+
+test('runAutomations keys off kind, not the old type field', () => {
+  // An un-migrated record with only `type` must not trigger anything.
+  assert.deepEqual(runAutomations({ record: { name: 'a.txt', type: 'invoice', folder: 'Finance' }, text: cloudnest, rules: DEFAULT_RULES, getFileText: () => null }), { writes: [], logs: [] });
+  assert.equal(runAutomations({ record: { name: 'a.txt', kind: 'report', topic: 'Finance' }, text: cloudnest, rules: DEFAULT_RULES, getFileText: () => null }).writes.length, 0);
 });
 
 test('appendExpenseRow dedupes by source file when the invoice has no number', () => {

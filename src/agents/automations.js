@@ -11,16 +11,20 @@
  *
  * ── BUSINESS RULES ──
  * - Invoice → expenses.csv (spec §4.4, PDF capability 4): every uploaded
- *   invoice adds one row `date,vendor,invoice_number,category,total,currency,
- *   source_file` to `expenses.csv` in the Finance folder.
+ *   file with `kind === 'invoice'` adds one row `date,vendor,invoice_number,
+ *   category,total,currency,source_file` to `expenses.csv`, which is written
+ *   as kind `data`, topic `Finance` (categories spec §5; tested).
  * - Duplicates are detected by invoice number, falling back to the source
  *   file name when no number was found. A duplicate is skipped, not
  *   re-added (Review Focus #1: same invoice uploaded twice → one row).
  * - An invoice with no readable total writes nothing and logs why.
  * - Category is a keyword vote: Software / Travel / Marketing / Office /
  *   Utilities, else Other.
- * - Meeting → action items: the checklist is written as
- *   "<meeting name> - action items.md" in the meeting's own folder.
+ * - Meeting → action items: a file with `kind === 'meeting'` gets a checklist
+ *   written as "<meeting name> - action items.md", kind `meeting`, with the
+ *   topic copied from the meeting (null stays null) (categories spec §5; tested).
+ * - Only `kind` triggers rules: an un-migrated record that still has the old
+ *   `type` field and no `kind` triggers nothing (tested).
  * - Each rule only runs while it is enabled (DEFAULT_RULES ids
  *   `invoice-to-csv`, `meeting-action-items`).
  *
@@ -41,6 +45,8 @@
  *
  * ── DO NOT ──
  * - Do NOT run automations on agent-generated files (record.generated).
+ * - Do NOT key rules off the old `type`/`folder` fields; records carry
+ *   `kind`/`topic` now and the migration removes the old ones.
  * - Do NOT do file IO here; return writes and let the pipeline apply them.
  * - Do NOT build CSV rows by plain string join without csvEscape.
  * - Do NOT change EXPENSES_HEADER column order: dedupe reads the invoice
@@ -52,8 +58,8 @@ export const EXPENSES_FILE = 'expenses.csv';
 export const EXPENSES_HEADER = 'date,vendor,invoice_number,category,total,currency,source_file';
 
 export const DEFAULT_RULES = [
-  { id: 'invoice-to-csv', name: 'Invoice → expenses.csv', description: 'When an invoice is uploaded, extract the vendor, date and total, pick a category, and add a row to expenses.csv in Finance.', enabled: true },
-  { id: 'meeting-action-items', name: 'Meeting → action items', description: 'When meeting notes are uploaded, pull the action items into a checklist file next to the meeting.', enabled: true },
+  { id: 'invoice-to-csv', name: 'Invoice → expenses.csv', description: 'When an invoice is uploaded, extract the vendor, date and total, pick a category, and add a row to expenses.csv (Finance).', enabled: true },
+  { id: 'meeting-action-items', name: 'Meeting → action items', description: 'When meeting notes are uploaded, pull the action items into a checklist file with the same topic.', enabled: true },
 ];
 
 const CATEGORIES = {
@@ -137,7 +143,7 @@ export function runAutomations({ record, text, rules, getFileText }) {
   if (record.generated) return { writes, logs };
   const on = (id) => rules.some((r) => r.id === id && r.enabled);
 
-  if (record.type === 'invoice' && on('invoice-to-csv')) {
+  if (record.kind === 'invoice' && on('invoice-to-csv')) {
     const inv = parseInvoice(text);
     if (!inv) {
       logs.push(`"${record.name}" looks like an invoice but has no total I could read, so nothing was logged.`);
@@ -145,7 +151,7 @@ export function runAutomations({ record, text, rules, getFileText }) {
       const { csv, added } = appendExpenseRow(getFileText(EXPENSES_FILE), inv, record.name);
       const label = inv.number || record.name;
       if (added) {
-        writes.push({ name: EXPENSES_FILE, folder: 'Finance', content: csv, type: 'data' });
+        writes.push({ name: EXPENSES_FILE, kind: 'data', topic: 'Finance', content: csv });
         logs.push(`Logged ${label} (${money(inv.total, inv.currency)}) from ${inv.vendor || 'unknown vendor'} to ${EXPENSES_FILE} as ${inv.category}.`);
       } else {
         logs.push(`${label} is already in ${EXPENSES_FILE}, so the duplicate was skipped.`);
@@ -153,14 +159,14 @@ export function runAutomations({ record, text, rules, getFileText }) {
     }
   }
 
-  if (record.type === 'meeting' && on('meeting-action-items')) {
+  if (record.kind === 'meeting' && on('meeting-action-items')) {
     const items = extractActionItems(text);
     if (items.length === 0) {
       logs.push(`No action items found in "${record.name}".`);
     } else {
       const name = `${record.name.replace(/\.[^.]+$/, '')} - action items.md`;
       const content = `# Action items: ${record.name}\n\n_Created automatically by the Meeting → action items automation._\n\n${items.map((i) => `- [ ] ${i}`).join('\n')}\n`;
-      writes.push({ name, folder: record.folder, content, type: 'report' });
+      writes.push({ name, kind: 'meeting', topic: record.topic ?? null, content });
       logs.push(`Found ${items.length} action items in "${record.name}" and created "${name}".`);
     }
   }

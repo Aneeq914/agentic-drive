@@ -10,26 +10,33 @@ import { createLlm } from '../src/llm.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 let server;
 let base;
+let dataDir;
 
 before(async () => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'drive-srv-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'drive-srv-'));
   const app = createApp({ dataDir, llm: createLlm({}), samplesDir: path.join(here, '..', 'src', 'samples') });
   await new Promise((r) => { server = app.listen(0, r); });
   base = `http://127.0.0.1:${server.address().port}`;
 });
 after(() => server.close());
 
-const json = async (p, opts = {}) => {
-  const res = await fetch(base + p, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}) } });
+const json = async (p, opts = {}, at = base) => {
+  const res = await fetch(at + p, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}) } });
   return { status: res.status, body: await res.json() };
 };
-const upload = async (files) => {
+const upload = async (files, at = base) => {
   const fd = new FormData();
   for (const [name, content] of files) fd.append('files', new Blob([content]), name);
-  const res = await fetch(`${base}/api/upload`, { method: 'POST', body: fd });
+  const res = await fetch(`${at}/api/upload`, { method: 'POST', body: fd });
   return { status: res.status, body: await res.json() };
 };
-const byName = async (name) => (await json('/api/files')).body.files.find((f) => f.name === name);
+const byName = async (name, at = base) => (await json('/api/files', {}, at)).body.files.find((f) => f.name === name);
+// A second, independent app (e.g. "after a restart" on the same dataDir).
+async function startApp(dir) {
+  const app = createApp({ dataDir: dir, llm: createLlm({}), samplesDir: path.join(here, '..', 'src', 'samples') });
+  const srv = await new Promise((r) => { const s = app.listen(0, () => r(s)); });
+  return { at: `http://127.0.0.1:${srv.address().port}`, close: () => srv.close() };
+}
 
 test('status is offline without keys', async () => {
   assert.deepEqual((await json('/api/status')).body, { aiProvider: null, model: null });
@@ -38,7 +45,7 @@ test('status is offline without keys', async () => {
 test('samples load and every agent result is visible', async () => {
   const r = await json('/api/samples', { method: 'POST' });
   assert.equal(r.status, 200);
-  assert.equal(r.body.loaded.length, 8);
+  // Other samples may be added over time, so assert on known files, not on counts.
   const expected = {
     'q3-marketing-kickoff.md': ['meeting', 'Marketing'],
     'q3-marketing-midpoint-review.md': ['meeting', 'Marketing'],
@@ -47,23 +54,51 @@ test('samples load and every agent result is visible', async () => {
     'invoice-skyway-travel-INV-2207.txt': ['invoice', 'Finance'],
     'invoice-printhub-INV-3310.pdf': ['invoice', 'Finance'],
     'q3-budget.csv': ['data', 'Finance'],
-    'mobile-app-v2-spec.md': ['report', 'Engineering'],
+    'mobile-app-v2-spec.md': ['spec', 'Engineering'],
   };
-  for (const [name, [type, folder]] of Object.entries(expected)) {
+  for (const name of Object.keys(expected)) assert.ok(r.body.loaded.includes(name), `${name} not loaded`);
+  for (const [name, [kind, topic]] of Object.entries(expected)) {
     const f = await byName(name);
     assert.ok(f, `${name} missing`);
-    assert.deepEqual([f.type, f.folder], [type, folder], name);
+    assert.deepEqual([f.kind, f.topic], [kind, topic], name);
+  }
+  for (const f of (await json('/api/files')).body.files) {
+    assert.equal('type' in f || 'folder' in f, false, `${f.name} still has type/folder`);
+    assert.equal(typeof f.pinned, 'boolean', f.name);
+    assert.ok(['high', 'medium', 'low'].includes(f.confidence), f.name);
   }
   const csv = await byName('expenses.csv');
+  assert.deepEqual([csv.kind, csv.topic, csv.generated, csv.pinned], ['data', 'Finance', true, false]);
   const text = (await json(`/api/files/${csv.id}`)).body.text;
-  assert.equal(text.trim().split('\n').length, 4, text);
   assert.match(text, /INV-1042.*1250\.00/);
   assert.match(text, /INV-2207.*Travel,842\.60/);
   assert.match(text, /INV-3310.*Marketing,3480\.00/);
-  assert.ok(await byName('q3-marketing-kickoff - action items.md'));
+  const items = await byName('q3-marketing-kickoff - action items.md');
+  assert.ok(items);
+  assert.deepEqual([items.kind, items.topic, items.generated], ['meeting', 'Marketing', true]);
+  const act = (await json('/api/activity')).body.activity;
+  assert.ok(act.some((a) => a.agent === 'Organizer' && /^Filed "mobile-app-v2-spec\.md" under Specs & Plans \(topic: Engineering, confidence: (high|medium)\)\.$/.test(a.message)));
   const again = await json('/api/samples', { method: 'POST' });
-  assert.equal(again.body.loaded.length, 0);
-  assert.equal(again.body.skipped.length, 8);
+  for (const name of r.body.loaded) assert.ok(again.body.skipped.includes(name), `${name} was loaded twice`);
+});
+
+test('a file the classifier cannot place goes to Other with a "not sure" note', async () => {
+  const r = await upload([['plant.txt', 'Water the fern on Tuesdays.']]);
+  const f = r.body.files[0];
+  assert.deepEqual([f.kind, f.topic, f.confidence, f.pinned], ['other', null, 'low', false]);
+  const act = (await json('/api/activity')).body.activity;
+  const line = act.find((a) => a.message.startsWith('Filed "plant.txt"'));
+  assert.match(line.message, /^Filed "plant\.txt" under Other \(topic: none, confidence: low\) — not sure/);
+  assert.match(line.message, /Use "Move to…" if it's wrong\.$/);
+});
+
+test('GET /api/meta lists the 9 kinds in order and the 8 topics', async () => {
+  const r = await json('/api/meta');
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.kinds.map((k) => k.id), ['invoice', 'meeting', 'contract', 'proposal', 'spec', 'report', 'data', 'people', 'other']);
+  assert.deepEqual(r.body.kinds[0], { id: 'invoice', label: 'Invoices & Receipts' });
+  assert.equal(r.body.kinds[8].label, 'Other');
+  assert.deepEqual(r.body.topics, ['Finance', 'Marketing', 'Engineering', 'Sales', 'HR', 'Legal', 'Operations', 'Product']);
 });
 
 test('ask answers the Q3 budget with a citation', async () => {
@@ -74,11 +109,12 @@ test('ask answers the Q3 budget with a citation', async () => {
   assert.equal((await json('/api/ask', { method: 'POST', body: JSON.stringify({ question: '' }) })).status, 400);
 });
 
-test('synthesize creates a file in Generated', async () => {
+test('synthesize creates a generated report with the sources\' most common topic', async () => {
   const ids = await Promise.all(['q3-marketing-kickoff.md', 'q3-marketing-midpoint-review.md', 'q3-marketing-wrapup.md'].map(async (n) => (await byName(n)).id));
   const r = await json('/api/synthesize', { method: 'POST', body: JSON.stringify({ fileIds: ids, format: 'requirements' }) });
   assert.equal(r.status, 200);
-  assert.equal(r.body.folder, 'Generated');
+  assert.deepEqual([r.body.kind, r.body.topic, r.body.generated, r.body.pinned, r.body.confidence], ['report', 'Marketing', true, false, 'high']);
+  assert.equal('folder' in r.body || 'type' in r.body, false);
   const doc = (await json(`/api/files/${r.body.id}`)).body.text;
   assert.match(doc, /## Sources/);
   assert.match(doc, /Sara will finalise the campaign brief by July 8\./);
@@ -111,6 +147,87 @@ test('html in names is stored verbatim (UI escapes it)', async () => {
   const name = '<img src=x onerror=alert(1)>.txt';
   const r = await upload([[name, 'hello world from a tricky file']]);
   assert.equal(r.body.files[0].name, name);
+});
+
+test('PATCH moves and pins a file; it survives a restart; bad input is a 400 and changes nothing', async () => {
+  const spec = await byName('mobile-app-v2-spec.md');
+  const patch = (id, body) => json(`/api/files/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+  const moved = await patch(spec.id, { kind: 'report' });
+  assert.equal(moved.status, 200);
+  assert.deepEqual([moved.body.kind, moved.body.topic, moved.body.pinned, moved.body.confidence], ['report', 'Engineering', true, 'high']);
+  const act = (await json('/api/activity')).body.activity;
+  assert.ok(act.some((a) => a.agent === 'Drive' && a.message === 'Moved "mobile-app-v2-spec.md" to Reports (pinned by you).'));
+  const retopic = await patch(spec.id, { topic: null });
+  assert.deepEqual([retopic.status, retopic.body.kind, retopic.body.topic], [200, 'report', null]);
+
+  for (const body of [{ kind: 'memo' }, { topic: 'Snacks' }, { kind: 'report', topic: 'Snacks' }, {}, [], { pinned: false }]) {
+    const bad = await patch(spec.id, body);
+    assert.equal(bad.status, 400, JSON.stringify(body));
+    assert.ok(bad.body.error);
+  }
+  assert.equal((await json(`/api/files/${spec.id}`, { method: 'PATCH', body: 'null' })).status, 400);
+  assert.equal((await patch('nope', { kind: 'report' })).status, 404);
+  const still = await byName('mobile-app-v2-spec.md');
+  assert.deepEqual([still.kind, still.topic, still.pinned], ['report', null, true]);
+
+  const restarted = await startApp(dataDir);
+  try {
+    const after = await byName('mobile-app-v2-spec.md', restarted.at);
+    assert.deepEqual([after.kind, after.topic, after.pinned], ['report', null, true]);
+  } finally {
+    restarted.close();
+  }
+});
+
+test('old type/folder records are migrated at startup and the invoice automation still works', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'drive-migrate-'));
+  fs.mkdirSync(path.join(dir, 'files'));
+  const invoiceText = 'INVOICE\nFrom: CloudNest Hosting Ltd.\nInvoice Number: INV-1042\nInvoice Date: 2026-07-05\nBill To: Agentic Drive Team\nCloud hosting subscription $1,000.00\nTotal Due: $1,250.00';
+  const csvText = 'date,vendor,invoice_number,category,total,currency,source_file\n2026-07-05,CloudNest Hosting Ltd.,INV-1042,Software,1250.00,USD,old-invoice.txt\n';
+  const old = (id, name, text, type, folder, generated) => {
+    fs.writeFileSync(path.join(dir, 'files', id + path.extname(name)), text);
+    return { id, name, ext: path.extname(name), size: Buffer.byteLength(text), type, folder, tags: [type], summary: '', createdAt: '2026-07-06T10:00:00.000Z', generated, source: generated ? 'agent' : 'upload', text };
+  };
+  const files = [
+    old('old-1', 'old-invoice.txt', invoiceText, 'invoice', 'Finance', false),
+    old('old-2', 'expenses.csv', csvText, 'data', 'Finance', true),
+    old('old-3', 'kickoff - action items.md', '# Action items: kickoff.md\n\n- [ ] Sara will send the brief.\n', 'report', 'Marketing', true),
+    old('old-4', 'Requirements - 2026-07-06 10-00.md', '# Requirements\n\nThe app must sync files.\n', 'report', 'Generated', true),
+  ];
+  fs.writeFileSync(path.join(dir, 'db.json'), JSON.stringify({ files, rules: [], activity: [] }));
+
+  const app = await startApp(dir);
+  try {
+    const list = (await json('/api/files', {}, app.at)).body.files;
+    for (const f of list) assert.equal('type' in f || 'folder' in f, false, `${f.name} kept type/folder`);
+    const got = Object.fromEntries(list.map((f) => [f.name, [f.kind, f.topic, f.pinned]]));
+    assert.deepEqual(got['old-invoice.txt'], ['invoice', 'Finance', false]);
+    assert.deepEqual(got['expenses.csv'], ['data', 'Finance', false]);
+    assert.deepEqual(got['kickoff - action items.md'], ['meeting', 'Marketing', false]);
+    assert.deepEqual(got['Requirements - 2026-07-06 10-00.md'], ['report', null, false]);
+    const raw = JSON.parse(fs.readFileSync(path.join(dir, 'db.json'), 'utf8'));
+    assert.ok(raw.files.every((f) => !('type' in f) && !('folder' in f) && f.kind));
+    const act = (await json('/api/activity', {}, app.at)).body.activity;
+    assert.ok(act.some((a) => a.message === 'Re-sorted 4 files with the new categories.'));
+
+    // The invoice automation still appends to the migrated expenses.csv (no second ledger).
+    await upload([['new-invoice.txt', invoiceText.replace('INV-1042', 'INV-7777').replace('CloudNest Hosting Ltd.', 'Figma')]], app.at);
+    const after = (await json('/api/files', {}, app.at)).body.files;
+    assert.equal(after.filter((f) => f.name === 'expenses.csv').length, 1);
+    const csv = (await json(`/api/files/${after.find((f) => f.name === 'expenses.csv').id}`, {}, app.at)).body.text;
+    assert.match(csv, /INV-1042/);
+    assert.match(csv, /INV-7777/);
+  } finally {
+    app.close();
+  }
+  // A second start has nothing left to migrate.
+  const again = await startApp(dir);
+  try {
+    const act = (await json('/api/activity', {}, again.at)).body.activity;
+    assert.equal(act.filter((a) => a.message.startsWith('Re-sorted')).length, 1);
+  } finally {
+    again.close();
+  }
 });
 
 test('automations toggle, activity feed, delete, download, 404s', async () => {

@@ -1,0 +1,19 @@
+Sprint 41 retro — mobile squad (Quillmark)
+facilitator this time: Dev
+
+went well
++ shipped offline mode a day early
++ pairing on the sync bug actually worked, keep doing it
++ fewer meetings this sprint, nobody missed them
+
+didn't go well
+- the design handoff for settings came in mid-sprint, we re-did two screens
+- flaky e2e tests ate ~half a day for three people
+- story points were wildly off on anything touching the payments SDK
+
+ideas / try next sprint
+> design reviews happen BEFORE planning, not during
+> quarantine the flaky tests, Sam to make a list
+> spike payments work first before estimating
+
+mood: 3.8 / 5 (last sprint 3.2)

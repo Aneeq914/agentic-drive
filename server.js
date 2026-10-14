@@ -3,8 +3,10 @@
  *
  * ── IN SIMPLE WORDS ──
  * This is the front desk. The browser asks it to upload files, list them,
- * answer questions, combine documents or toggle automations, and it hands
- * each job to the right agent and replies with JSON.
+ * move a file to another category, answer questions, combine documents or
+ * toggle automations, and it hands each job to the right agent and replies
+ * with JSON. On start it also re-sorts files saved by the old folder-based
+ * version of the drive.
  *
  * ── BUSINESS RULES ──
  * - Spec §5 API table: every route and status code here comes from it.
@@ -12,6 +14,13 @@
  *   unreadable files are a 400 with a readable message, never a crash.
  * - Spec §2: AI keys live in the server's environment and never reach the
  *   browser (/api/status exposes only provider + model names).
+ * - Categories spec §5 / plan API contract: records carry kind/topic/
+ *   confidence/pinned (no type/folder). GET /api/meta lists the 9 kinds (in
+ *   fixed order, with labels) and the 8 topics. PATCH /api/files/:id with
+ *   {kind?, topic?} moves + pins a file: 400 for an invalid kind/topic, an
+ *   empty or non-object body; 404 for an unknown id (tested, incl. restart).
+ * - Synthesized files are kind `report` with the most common non-null topic
+ *   of their sources (ties: the first source's), or null (tested).
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
  * - createApp() takes dataDir/llm/samplesDir as arguments so tests run on a
@@ -21,10 +30,14 @@
  *   where every file failed is a 400, so one bad file can't hide good ones.
  * - multer reports file names as latin1; we re-decode as UTF-8, otherwise
  *   non-English file names show up garbled.
+ * - pipeline.migrate() runs once inside createApp(), before any route can
+ *   serve a record, so the UI never sees an old type/folder record (tested
+ *   with a hand-written old db.json).
  *
  * ── DO NOT ──
  * - Do not return API keys or raw provider errors with secrets to the client.
  * - Do not listen() on import — tests import createApp() directly.
+ * - Do not re-run automations from PATCH: a move is a label change only.
  */
 import path from 'node:path';
 import fs from 'node:fs';
@@ -38,6 +51,7 @@ import { UnsupportedFileError, ExtractError } from './src/extract.js';
 import { DEFAULT_RULES } from './src/agents/automations.js';
 import { ask } from './src/agents/search.js';
 import { synthesize, FORMATS } from './src/agents/synthesizer.js';
+import { KINDS, TOPICS } from './src/agents/classifier.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -45,9 +59,19 @@ class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 
+// Most common non-null topic among the sources; ties keep the earliest source's topic.
+function mostCommonTopic(docs) {
+  const counts = new Map();
+  for (const d of docs) if (d.topic) counts.set(d.topic, (counts.get(d.topic) ?? 0) + 1);
+  let best = null;
+  for (const [topic, n] of counts) if (best === null || n > counts.get(best)) best = topic;
+  return best;
+}
+
 export function createApp({ dataDir, llm, samplesDir = path.join(here, 'src', 'samples') }) {
   const store = createStore(dataDir, { defaultRules: DEFAULT_RULES });
   const pipeline = createPipeline({ store, llm });
+  pipeline.migrate();
   const app = express();
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 20 } });
   const mustGet = (id) => { const f = store.get(id); if (!f) throw new HttpError(404, 'File not found.'); return f; };
@@ -56,11 +80,28 @@ export function createApp({ dataDir, llm, samplesDir = path.join(here, 'src', 's
   app.use(express.static(path.join(here, 'public')));
 
   app.get('/api/status', (req, res) => res.json(llm.status()));
+  app.get('/api/meta', (req, res) => res.json({ kinds: KINDS.map(({ id, label }) => ({ id, label })), topics: [...TOPICS] }));
   app.get('/api/files', (req, res) => res.json({ files: store.list() }));
   app.get('/api/files/:id', (req, res) => res.json(mustGet(req.params.id)));
   app.get('/api/files/:id/download', (req, res) => {
     const f = mustGet(req.params.id);
     res.download(store.filePath(f.id), f.name);
+  });
+  app.patch('/api/files/:id', (req, res) => {
+    const body = req.body;
+    const isObject = body !== null && typeof body === 'object' && !Array.isArray(body);
+    if (!isObject || !(Object.hasOwn(body, 'kind') || Object.hasOwn(body, 'topic'))) {
+      throw new HttpError(400, 'Send {"kind"} and/or {"topic"} to move a file.');
+    }
+    let record;
+    try {
+      record = pipeline.moveFile(req.params.id, { kind: body.kind, topic: body.topic });
+    } catch (err) {
+      if (err.status === 400) throw new HttpError(400, err.message);
+      throw err;
+    }
+    if (!record) throw new HttpError(404, 'File not found.');
+    res.json(record);
   });
   app.delete('/api/files/:id', (req, res) => {
     const f = mustGet(req.params.id);
@@ -118,7 +159,7 @@ export function createApp({ dataDir, llm, samplesDir = path.join(here, 'src', 's
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}-${pad(now.getMinutes())}`;
-    const record = pipeline.saveGenerated({ name: `${result.title} - ${stamp}.md`, folder: 'Generated', content: result.content, type: 'report' });
+    const record = pipeline.saveGenerated({ name: `${result.title} - ${stamp}.md`, kind: 'report', topic: mostCommonTopic(docs), content: result.content });
     store.addActivity('Synthesizer', `Created "${record.name}" from ${docs.length} files${result.by === 'ai' ? ' (AI)' : ''}.`);
     res.json(record);
   });

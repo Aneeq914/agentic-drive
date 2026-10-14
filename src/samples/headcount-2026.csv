@@ -1,0 +1,17 @@
+employee_id,name,job_title,department,manager,employment_type,start_date,location,work_pattern,status
+BL-001,Ayesha Malik,Chief Executive Officer,Leadership,,Full-time,2022-03-01,Lahore,Hybrid,Active
+BL-002,Daniyal Qureshi,Engineering Lead,Engineering,Ayesha Malik,Full-time,2022-03-01,Lahore,Hybrid,Active
+BL-003,Omar Siddiqui,Finance Manager,Finance,Ayesha Malik,Full-time,2022-09-12,Lahore,Hybrid,Active
+BL-004,Sara Khan,Marketing Lead,Marketing,Ayesha Malik,Full-time,2023-01-16,Lahore,Hybrid,Active
+BL-005,Zara Sheikh,Product Manager,Product,Ayesha Malik,Full-time,2023-04-03,Lahore,Hybrid,Active
+BL-006,Usman Tariq,Operations & HR Manager,Operations,Ayesha Malik,Full-time,2023-06-05,Lahore,Hybrid,Active
+BL-007,Fatima Noor,Backend Engineer,Engineering,Daniyal Qureshi,Full-time,2023-08-21,Lahore,Hybrid,Active
+BL-008,Hamza Iqbal,Frontend Engineer,Engineering,Daniyal Qureshi,Full-time,2023-10-02,Lahore,Hybrid,Active
+BL-009,Mehwish Javed,Product Designer,Product,Zara Sheikh,Full-time,2024-01-08,Lahore,Hybrid,Active
+BL-010,Hina Raza,Paid Media Specialist,Marketing,Sara Khan,Full-time,2024-02-19,Lahore,Hybrid,Active
+BL-011,Bilal Ahmed,Content Writer,Marketing,Sara Khan,Full-time,2024-05-06,Islamabad,Remote,Active
+BL-012,Saad Mirza,Account Manager,Sales,Ayesha Malik,Full-time,2024-07-15,Lahore,Hybrid,Active
+BL-013,Rabia Anwar,Backend Engineer,Engineering,Daniyal Qureshi,Full-time,2025-02-03,Lahore,Hybrid,Active
+BL-014,Ali Hassan,QA Engineer,Engineering,Daniyal Qureshi,Full-time,2025-09-01,Lahore,Hybrid,Active
+REQ-015,,Senior Backend Engineer,Engineering,Daniyal Qureshi,Full-time,2026-11-16,Lahore,Hybrid,Open - interviewing
+REQ-016,,Product Designer,Product,Zara Sheikh,Full-time,2027-01-04,Lahore,Hybrid,Open - final interviews

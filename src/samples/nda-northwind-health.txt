@@ -1,0 +1,42 @@
+MUTUAL NON-DISCLOSURE AGREEMENT
+
+Reference: BL-NDA-2026-012
+Effective Date: 2026-07-14
+
+PARTIES
+(1) Brightleaf Labs (Pvt.) Ltd., Office 3, Level 2, The Hive Coworking, DHA Phase 5, Lahore, Pakistan ("Brightleaf"); and
+(2) Northwind Health (Pvt.) Ltd., 9 Jail Road, Lahore, Pakistan ("Northwind").
+
+PURPOSE
+The parties want to discuss a possible project in which Brightleaf designs and builds a patient-facing mobile app for Northwind's clinics (the "Purpose"). To do this, each party may share confidential information with the other.
+
+1. CONFIDENTIAL INFORMATION
+"Confidential Information" means any business, technical, financial or clinical-operations information shared by either party, in writing or out loud, that is marked as confidential or that a reasonable person would treat as confidential. This includes system designs, pricing, clinic workflows and patient volume figures.
+
+2. OBLIGATIONS
+The receiving party will:
+  (a) use Confidential Information only for the Purpose;
+  (b) share it only with employees and contractors who need it for the Purpose and are bound by terms at least as strict as these; and
+  (c) protect it with at least the same care it uses for its own confidential information, and never less than reasonable care.
+
+3. PATIENT DATA
+Northwind will not share any personally identifiable patient data or medical records under this Agreement. Any research with patients during discovery will use only participants who have given their consent and anonymised notes. If patient data is ever needed, the parties must first sign a separate data processing agreement.
+
+4. EXCLUSIONS
+These obligations do not apply to information that is or becomes public without the receiving party's fault, was already lawfully known to the receiving party, is developed independently, or must be disclosed by law.
+
+5. TERM
+This Agreement lasts two (2) years from the Effective Date. Each party's confidentiality obligations continue for three (3) years after any disclosure.
+
+6. RETURN OF MATERIALS
+When asked, the receiving party will return or destroy all Confidential Information within 14 days and confirm this in writing.
+
+7. NO OBLIGATION
+This Agreement does not require either party to go ahead with any project, and it grants no licence to either party's intellectual property.
+
+8. GOVERNING LAW
+This Agreement is governed by the laws of Pakistan. The courts at Lahore have exclusive jurisdiction.
+
+SIGNED
+For Brightleaf Labs (Pvt.) Ltd.: Ayesha Malik, Chief Executive Officer. Date: 2026-07-14
+For Northwind Health (Pvt.) Ltd.: Dr. Nadia Hussain, Chief Digital Officer. Date: 2026-07-14

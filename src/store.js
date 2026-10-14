@@ -4,17 +4,21 @@
  * ── IN SIMPLE WORDS ──
  * This is the drive's filing cabinet. The actual file bytes go into
  * `data/files/`, and a single index card file (`data/db.json`) remembers
- * everything about each file: its name, folder, tags, summary and extracted
- * text. It also remembers which automation rules are switched on and keeps a
+ * everything about each file: its name, kind (category), topic, tags, summary
+ * and extracted text. It also remembers which automation rules are switched on and keeps a
  * short diary of what the agents did (the activity feed). Everything survives
  * a server restart.
  *
  * ── BUSINESS RULES ──
  * - Storage is files on disk plus db.json, no database install (spec §2
  *   "Storage"; spec §3 "single source of truth").
- * - New files start as type "report" in folder "General" with no tags and an
- *   empty summary; the Organizer fills these in afterwards (spec §3 upload
- *   pipeline).
+ * - New files start as kind "other", topic null, confidence "low",
+ *   pinned false, with no tags and an empty summary; the Organizer fills these
+ *   in afterwards (plan 2026-10-14-categories Task 4; spec §5: records carry
+ *   kind/topic/confidence/pinned, never type/folder).
+ * - `update()` with a value of `undefined` deletes that field. The startup
+ *   migration uses this to drop old `type`/`folder` fields (spec §5).
+ *   Tested: "update with an undefined value removes that field".
  * - Default automation rules are seeded only if missing, so a rule the user
  *   switched off stays off after a restart.
  * - The activity feed is newest first and keeps at most 200 entries.
@@ -43,6 +47,8 @@
  * - Do not write db.json directly or asynchronously; always go through save().
  * - Do not remove `text` from LOCKED_FIELDS; patching text via update() would
  *   leave it out of sync with the bytes on disk.
+ * - Do not reintroduce `type`/`folder` defaults in add(): the API contract and
+ *   the UI expect `kind`/`topic` only.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -81,7 +87,7 @@ export function createStore(dataDir, { defaultRules = [] } = {}) {
     add({ name, buffer, text, source = 'upload', generated = false }) {
       const rec = {
         id: crypto.randomUUID(), name, ext: path.extname(name).toLowerCase(), size: buffer.length,
-        type: 'report', folder: 'General', tags: [], summary: '',
+        kind: 'other', topic: null, confidence: 'low', pinned: false, tags: [], summary: '',
         createdAt: new Date().toISOString(), generated, source, text,
       };
       fs.writeFileSync(diskPath(rec), buffer);
@@ -92,7 +98,12 @@ export function createStore(dataDir, { defaultRules = [] } = {}) {
     update(id, patch) {
       const rec = find(id);
       if (!rec) return null;
-      for (const [k, v] of Object.entries(patch)) if (!LOCKED_FIELDS.includes(k)) rec[k] = v;
+      for (const [k, v] of Object.entries(patch)) {
+        if (LOCKED_FIELDS.includes(k)) continue;
+        // undefined means "remove this field" (used to drop old type/folder).
+        if (v === undefined) delete rec[k];
+        else rec[k] = v;
+      }
       save();
       return strip(rec);
     },
