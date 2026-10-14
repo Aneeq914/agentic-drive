@@ -1,0 +1,32 @@
+From: billing@kestrelprint.example
+To: ops@lanternhousetheatre.example
+Subject: Credit Note CN-1187 against invoice 5521
+
+Hi Marta,
+
+Sorry again about the misprinted programmes for the opening night - the
+binding on the second batch was clearly off. As agreed on the phone, we've
+issued a credit against the original invoice rather than a refund, so it
+will just come off your next statement.
+
+  KESTREL PRINT & FINISHING
+  CREDIT NOTE CN-1187
+  Date issued: 09 Oct 2026
+  Original invoice: 5521 (dated 22 Sep 2026)
+
+  Customer: Lantern House Theatre, 3 Quay Street
+
+  Item                                       Qty     Unit      Credit
+  A5 programme, 24pp saddle-stitched         400     £0.92     £368.00
+  Rush handling fee (refunded in full)         1     £45.00     £45.00
+                                                  Net credit  £413.00
+                                                  VAT 20%      £82.60
+                                                  TOTAL CREDIT £495.60
+
+  Remaining balance on invoice 5521: £1,214.40
+
+Let me know if your finance team needs the PDF version for their records.
+
+Cheers,
+Dev Okafor
+Accounts, Kestrel Print & Finishing

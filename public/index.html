@@ -2,139 +2,209 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Agentic Drive</title>
-  <meta name="description" content="A cloud drive where AI agents organise, search, combine and act on your files.">
-  <meta name="theme-color" content="#ffffff">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f5bd5'/%3E%3Cpath d='M16 7l2.2 6.8L25 16l-6.8 2.2L16 25l-2.2-6.8L7 16l6.8-2.2z' fill='%23fff'/%3E%3C/svg%3E">
+  <meta name="description" content="A cloud drive where AI agents sort, search, combine and act on your files.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f0f11" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235e6ad2'/%3E%3Cpath d='M16 7c.8 5.8 2.7 7.7 8.5 8.5-5.8.8-7.7 2.7-8.5 8.5-.8-5.8-2.7-7.7-8.5-8.5C13.3 14.7 15.2 12.8 16 7z' fill='%23fff'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <a class="skip-link" href="#file-list">Skip to files</a>
+  <!-- Icon sprite: 16px line icons, 1.5px stroke. Referenced with <use href="#i-…">. -->
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-invoice" viewBox="0 0 16 16"><path d="M3.5 1.75h9v12.5l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1z"/><path d="M6 5.25h4M6 8h4M6 10.25h2"/></symbol>
+    <symbol id="i-meeting" viewBox="0 0 16 16"><circle cx="6" cy="5.5" r="2.25"/><path d="M2 13.25c.4-2.2 1.95-3.5 4-3.5s3.6 1.3 4 3.5"/><path d="M10.4 3.35a2.25 2.25 0 0 1 0 4.3M11.9 9.9c1.05.55 1.75 1.65 2.1 3.35"/></symbol>
+    <symbol id="i-contract" viewBox="0 0 16 16"><path d="M9.5 1.75H4.25a1 1 0 0 0-1 1v10.5a1 1 0 0 0 1 1h7.5a1 1 0 0 0 1-1v-8.5z"/><path d="M9.5 1.75v3h3"/><path d="M5.5 11.25c.55-.9 1-.9 1.45 0 .45.9.9.9 1.45 0 .4-.6.8-.6 1.1-.05"/></symbol>
+    <symbol id="i-proposal" viewBox="0 0 16 16"><path d="M6.25 12.25h3.5M6.75 14.25h2.5"/><path d="M8 1.75a4.25 4.25 0 0 0-2.4 7.76c.35.24.55.62.55 1.04v.2h3.7v-.2c0-.42.2-.8.55-1.04A4.25 4.25 0 0 0 8 1.75z"/></symbol>
+    <symbol id="i-spec" viewBox="0 0 16 16"><path d="M1.75 3.75 5.5 2l5 2 3.75-1.75v10L10.5 14l-5-2-3.75 1.75z"/><path d="M5.5 2v10M10.5 4v10"/></symbol>
+    <symbol id="i-report" viewBox="0 0 16 16"><path d="M2 14h12"/><rect x="3" y="8" width="2.5" height="3.75" rx=".5"/><rect x="6.75" y="3" width="2.5" height="8.75" rx=".5"/><rect x="10.5" y="5.75" width="2.5" height="6" rx=".5"/></symbol>
+    <symbol id="i-data" viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M2 6.25h12M2 9.75h12M6 6.25v7.25"/></symbol>
+    <symbol id="i-people" viewBox="0 0 16 16"><circle cx="8" cy="5.5" r="2.75"/><path d="M2.75 14c.5-2.75 2.6-4.25 5.25-4.25s4.75 1.5 5.25 4.25"/></symbol>
+    <symbol id="i-other" viewBox="0 0 16 16"><path d="M9.25 1.75h-5a1 1 0 0 0-1 1v10.5a1 1 0 0 0 1 1h7.5a1 1 0 0 0 1-1v-8z"/><path d="M9.25 1.75v3.5h3.5"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 16 16"><path d="M7 2c.45 3.1 1.4 4.05 4.5 4.5-3.1.45-4.05 1.4-4.5 4.5-.45-3.1-1.4-4.05-4.5-4.5C5.6 6.05 6.55 5.1 7 2z"/><path d="M12.25 10.25c.2 1.3.7 1.8 2 2-1.3.2-1.8.7-2 2-.2-1.3-.7-1.8-2-2 1.3-.2 1.8-.7 2-2z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.75"/><path d="m10.5 10.5 3.5 3.5"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 16 16"><path d="M8 10.25V2.25M4.75 5.5 8 2.25l3.25 3.25"/><path d="M2.75 10.25v2a1.5 1.5 0 0 0 1.5 1.5h7.5a1.5 1.5 0 0 0 1.5-1.5v-2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 16 16"><path d="M8 2.25v8M4.75 7 8 10.25 11.25 7"/><path d="M2.75 10.25v2a1.5 1.5 0 0 0 1.5 1.5h7.5a1.5 1.5 0 0 0 1.5-1.5v-2"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 16 16"><rect x="2.25" y="2.25" width="4.5" height="4.5" rx="1"/><rect x="9.25" y="2.25" width="4.5" height="4.5" rx="1"/><rect x="2.25" y="9.25" width="4.5" height="4.5" rx="1"/><rect x="9.25" y="9.25" width="4.5" height="4.5" rx="1"/></symbol>
+    <symbol id="i-list" viewBox="0 0 16 16"><path d="M5.75 4h7.5M5.75 8h7.5M5.75 12h7.5"/><circle cx="2.75" cy="4" r=".9" fill="currentColor" stroke="none"/><circle cx="2.75" cy="8" r=".9" fill="currentColor" stroke="none"/><circle cx="2.75" cy="12" r=".9" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-close" viewBox="0 0 16 16"><path d="m4 4 8 8M12 4l-8 8"/></symbol>
+    <symbol id="i-more" viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="8" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="12.5" cy="8" r="1.1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 16 16"><path d="M2.75 4.25h10.5M6.25 4.25v-1.5h3.5v1.5M4.25 4.25l.6 8.6a1 1 0 0 0 1 .9h4.3a1 1 0 0 0 1-.9l.6-8.6"/><path d="M6.75 7v4M9.25 7v4"/></symbol>
+    <symbol id="i-move" viewBox="0 0 16 16"><path d="M1.75 4.25a1 1 0 0 1 1-1h3l1.5 1.5h6a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1z"/><path d="M6 9h4.25M8.75 7.25 10.5 9l-1.75 1.75"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 16 16"><path d="M1.75 8h2.5l1.75-4.5 4 9L11.75 8h2.5"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 16 16"><path d="M8.75 1.75 3.25 9h4.25l-.75 5.25L12.25 7H8z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 16 16"><path d="M2.5 4.5h6.25M11.25 4.5h2.25M2.5 11.5h2.25M7.25 11.5h6.25"/><circle cx="10" cy="4.5" r="1.5"/><circle cx="6" cy="11.5" r="1.5"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 16 16"><path d="m6 3.5 4.5 4.5L6 12.5"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 16 16"><path d="M10 3.5 5.5 8l4.5 4.5"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 16 16"><path d="m4.25 6.25 3.75 3.75 3.75-3.75"/></symbol>
+    <symbol id="i-check" viewBox="0 0 16 16"><path d="m3.25 8.5 3 3 6.5-7"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.25"/><path d="M8 4.75v3.75"/><circle cx="8" cy="11" r=".85" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.25"/><path d="M8 7.25v4"/><circle cx="8" cy="5" r=".85" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 16 16"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.25"/><path d="M8 4.75V8l2.25 1.5"/></symbol>
+    <symbol id="i-stack" viewBox="0 0 16 16"><path d="M8 1.75 1.75 5 8 8.25 14.25 5z"/><path d="M1.75 8 8 11.25 14.25 8"/><path d="M1.75 11 8 14.25 14.25 11"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 16 16"><path d="M1.5 8S3.9 3.25 8 3.25 14.5 8 14.5 8 12.1 12.75 8 12.75 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 16 16"><path d="M5.75 1.75h4.5l-.6 4.1 2.1 2.65H4.25l2.1-2.65z"/><path d="M8 8.5v5.75"/></symbol>
+    <symbol id="i-open" viewBox="0 0 16 16"><path d="M6.5 3H3.75a1 1 0 0 0-1 1v8.25a1 1 0 0 0 1 1H12a1 1 0 0 0 1-1V9.5"/><path d="M9.25 2.75h4v4M13.25 2.75 7.75 8.25"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 16 16"><path d="M2 2.75v4.1a1 1 0 0 0 .3.7l5.9 5.9a1 1 0 0 0 1.4 0l3.65-3.65a1 1 0 0 0 0-1.4L7.35 2.3a1 1 0 0 0-.7-.3H2.75a.75.75 0 0 0-.75.75z"/><circle cx="5" cy="5" r=".9" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-enter" viewBox="0 0 16 16"><path d="M13 3.25V7.5a2 2 0 0 1-2 2H3.5M6 6.75 3.25 9.5 6 12.25"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4"/></symbol>
+    <symbol id="i-sort" viewBox="0 0 16 16"><path d="M8 3.5v9M4.75 9.25 8 12.5l3.25-3.25"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 16 16"><path d="M13.25 3.5v3h-3"/><path d="M13 6.25A5.25 5.25 0 1 0 13.1 10"/></symbol>
+    <symbol id="i-hash" viewBox="0 0 16 16"><path d="M3 6h10.5M2.5 10H13M6.5 2.5 5.5 13.5M10.5 2.5l-1 11"/></symbol>
+  </svg>
 
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3l2 6.2L20.5 11 14 13 12 19.5 10 13 3.5 11 10 9.2z" fill="currentColor"/></svg>
-      </span>
-      <div class="brand-text">
-        <h1 class="brand-name">Agentic Drive</h1>
-        <p class="brand-sub">Your files, organised by AI agents</p>
+  <a class="skip-link" href="#files">Skip to files</a>
+
+  <div class="app">
+    <!-- ── Top bar: brand · Ask your drive · AI status · Upload ── -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button id="btn-menu" class="icon-btn nav-toggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+          <svg class="i" aria-hidden="true"><use href="#i-menu"/></svg>
+        </button>
+        <a class="brand" href="./" aria-label="Agentic Drive home">
+          <span class="brand-mark" aria-hidden="true"><svg class="i" viewBox="0 0 16 16"><path d="M8 2.25c.6 4.1 1.65 5.15 5.75 5.75-4.1.6-5.15 1.65-5.75 5.75-.6-4.1-1.65-5.15-5.75-5.75C6.35 7.4 7.4 6.35 8 2.25z" fill="currentColor" stroke="none"/></svg></span>
+          <span class="brand-name">Agentic Drive</span>
+        </a>
       </div>
-    </div>
 
-    <div class="topbar-actions">
-      <span id="ai-status" class="pill pill-muted" role="status" title="Which AI powers the agents">
-        <span class="pill-dot" aria-hidden="true"></span><span class="pill-label">Connecting…</span>
-      </span>
-      <button id="btn-samples" class="btn btn-secondary" type="button">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h3.5l2 2H18a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>
-        <span class="btn-label">Load sample files</span>
-      </button>
-      <button id="btn-upload" class="btn btn-primary" type="button">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0l-5 5m5-5l5 5M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-        <span class="btn-label">Upload</span>
-      </button>
-      <input id="file-input" type="file" multiple accept=".txt,.md,.csv,.pdf" hidden>
-    </div>
-  </header>
+      <div class="cmd" id="cmd">
+        <form id="ask-form" class="cmd-field" role="search" autocomplete="off">
+          <svg class="i cmd-icon" aria-hidden="true"><use href="#i-sparkle"/></svg>
+          <label for="ask-input" class="visually-hidden">Ask your drive a question</label>
+          <input id="ask-input" type="text" maxlength="500" placeholder="Ask your drive…" spellcheck="false"
+                 aria-controls="cmd-panel" aria-expanded="false" aria-haspopup="dialog">
+          <kbd id="cmd-kbd" class="kbd" aria-hidden="true">⌘K</kbd>
+        </form>
+        <div id="cmd-panel" class="cmd-panel" role="dialog" aria-label="Answer from your drive" data-open="false" inert>
+          <div id="cmd-body" class="cmd-body" aria-live="polite"></div>
+          <div class="cmd-foot" aria-hidden="true">
+            <span><kbd class="kbd">↵</kbd> ask</span>
+            <span><kbd class="kbd">esc</kbd> close</span>
+            <span class="cmd-foot-note">Answers cite the files they came from</span>
+          </div>
+        </div>
+      </div>
 
-  <main class="layout">
-    <!-- Left: folders -->
-    <nav class="col col-folders" aria-label="Folders">
-      <h2 class="col-heading">Folders</h2>
-      <ul id="folder-list" class="folder-list"></ul>
-      <p class="folders-note">Folders are created by the Organizer agent as files arrive.</p>
+      <div class="topbar-right">
+        <span id="ai-status" class="status-pill" role="status" title="Which AI powers the agents">
+          <span class="status-dot" aria-hidden="true"></span><span class="status-label">Connecting…</span>
+        </span>
+        <button id="btn-upload" class="btn btn-primary" type="button">
+          <svg class="i" aria-hidden="true"><use href="#i-upload"/></svg><span class="btn-label">Upload</span>
+        </button>
+        <input id="file-input" type="file" multiple accept=".txt,.md,.csv,.pdf" hidden>
+      </div>
+    </header>
+
+    <!-- ── Sidebar: views, categories, topics, automations, activity ── -->
+    <nav id="sidebar" class="sidebar" aria-label="Drive">
+      <div class="sidebar-head">
+        <span class="brand"><span class="brand-mark" aria-hidden="true"><svg class="i" viewBox="0 0 16 16"><path d="M8 2.25c.6 4.1 1.65 5.15 5.75 5.75-4.1.6-5.15 1.65-5.75 5.75-.6-4.1-1.65-5.15-5.75-5.75C6.35 7.4 7.4 6.35 8 2.25z" fill="currentColor" stroke="none"/></svg></span><span class="brand-name">Agentic Drive</span></span>
+        <button id="btn-nav-close" class="icon-btn" type="button" aria-label="Close navigation"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+      </div>
+      <div class="sidebar-scroll">
+        <ul id="nav-drive" class="nav-list"></ul>
+
+        <section class="nav-section" aria-labelledby="nav-kinds-h">
+          <h2 id="nav-kinds-h" class="nav-heading">Categories</h2>
+          <ul id="nav-kinds" class="nav-list"></ul>
+        </section>
+
+        <section class="nav-section" id="nav-topics-section" aria-labelledby="nav-topics-h">
+          <h2 id="nav-topics-h" class="nav-heading">Topics</h2>
+          <div id="nav-topics" class="topic-cloud"></div>
+        </section>
+      </div>
+
+      <div class="sidebar-foot">
+        <button id="btn-samples" class="btn btn-secondary btn-block" type="button" hidden>
+          <svg class="i" aria-hidden="true"><use href="#i-sparkle"/></svg><span class="btn-label">Load sample files</span>
+        </button>
+        <button id="btn-automations" class="nav-item" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="auto-panel">
+          <svg class="i" aria-hidden="true"><use href="#i-zap"/></svg>
+          <span class="nav-label">Automations</span>
+          <span id="auto-count" class="nav-meta"></span>
+        </button>
+        <button id="btn-activity" class="nav-item" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="activity-panel">
+          <svg class="i" aria-hidden="true"><use href="#i-activity"/></svg>
+          <span class="nav-label">Agent activity</span>
+          <span id="activity-unread" class="unread" hidden></span>
+          <span class="live-dot" title="Live — updates every 3 seconds"><span class="visually-hidden">Live</span></span>
+        </button>
+      </div>
     </nav>
+    <div id="nav-scrim" class="scrim scrim-nav" aria-hidden="true"></div>
 
-    <!-- Centre: file list + viewer -->
-    <section class="col col-files" aria-label="Files">
-      <div class="files-toolbar">
-        <div class="files-title">
-          <h2 id="files-heading" class="section-title">All files</h2>
-          <span id="files-count" class="count-text"></span>
+    <!-- ── Main: header + list / grid ── -->
+    <main id="main" class="main" aria-labelledby="view-title">
+      <div class="main-head">
+        <div class="crumbs">
+          <span class="crumb-root">Drive</span>
+          <svg class="i crumb-sep" aria-hidden="true"><use href="#i-chevron-right"/></svg>
+          <h1 id="view-title" class="view-title">All files</h1>
+          <span id="topic-filter" class="topic-filter"></span>
+          <span id="view-count" class="view-count" aria-live="polite"></span>
         </div>
-        <label class="search-field">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
-          <span class="visually-hidden">Filter files</span>
-          <input id="filter" type="search" placeholder="Filter by name, tag or summary" autocomplete="off" spellcheck="false">
-        </label>
-      </div>
-
-      <div class="card file-card">
-        <ul id="file-list" class="file-list" aria-labelledby="files-heading" tabindex="-1"></ul>
-      </div>
-
-      <article id="viewer" class="card viewer" aria-label="File viewer" hidden tabindex="-1"></article>
-    </section>
-
-    <!-- Right: agent panel + activity -->
-    <aside class="col col-agents" aria-label="Agents">
-      <div class="card agent-card">
-        <div class="tabs" role="tablist" aria-label="Agents">
-          <button class="tab" role="tab" id="tab-ask" aria-controls="panel-ask" aria-selected="true" type="button">Ask</button>
-          <button class="tab" role="tab" id="tab-synth" aria-controls="panel-synth" aria-selected="false" tabindex="-1" type="button">Synthesize</button>
-          <button class="tab" role="tab" id="tab-auto" aria-controls="panel-auto" aria-selected="false" tabindex="-1" type="button">Automations</button>
-        </div>
-
-        <div class="tab-panel" role="tabpanel" id="panel-ask" aria-labelledby="tab-ask">
-          <p class="panel-intro">Ask a question. The Search agent answers from your files and cites its sources.</p>
-          <form id="ask-form" class="ask-form" autocomplete="off">
-            <label for="ask-input" class="visually-hidden">Your question</label>
-            <input id="ask-input" type="text" maxlength="500" placeholder="Ask anything about your files" required>
-            <button id="btn-ask" class="btn btn-primary" type="submit">Ask</button>
-          </form>
-          <div class="examples" aria-label="Example questions">
-            <span class="examples-label">Try</span>
-            <button type="button" class="example" data-question="What was the Q3 marketing budget?">What was the Q3 marketing budget?</button>
-            <button type="button" class="example" data-question="Who owns the campaign brief?">Who owns the campaign brief?</button>
-            <button type="button" class="example" data-question="How much did we spend on travel?">How much did we spend on travel?</button>
-          </div>
-          <div id="ask-answer" class="ask-answer" aria-live="polite"></div>
-        </div>
-
-        <div class="tab-panel" role="tabpanel" id="panel-synth" aria-labelledby="tab-synth" hidden>
-          <p class="panel-intro">Tick files in the list. The Synthesizer combines them into one new document in <strong>Generated</strong>.</p>
-          <div class="synth-box">
-            <p id="synth-count" class="synth-count">0 files selected (pick at least 2)</p>
-            <ul id="synth-chips" class="synth-chips"></ul>
-            <label class="field-label" for="synth-format">Format</label>
-            <select id="synth-format" class="select">
-              <option value="requirements">Unified requirements doc</option>
-              <option value="summary">Summary</option>
-              <option value="compare">Compare</option>
-            </select>
-            <div class="synth-actions">
-              <button id="btn-synth" class="btn btn-primary btn-block" type="button" disabled>
-                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2 6.2L20.5 11 14 13 12 19.5 10 13 3.5 11 10 9.2z"/></svg>
-                <span class="btn-label">Generate document</span>
-              </button>
-              <button id="btn-clear-selection" class="btn btn-ghost btn-small" type="button" hidden>Clear selection</button>
-            </div>
+        <div class="main-tools">
+          <label class="filter-field">
+            <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+            <span class="visually-hidden">Filter files</span>
+            <input id="filter" type="search" placeholder="Filter" autocomplete="off" spellcheck="false">
+          </label>
+          <div class="seg" role="group" aria-label="Layout">
+            <button id="layout-list" class="seg-btn" type="button" aria-pressed="true" title="List view">
+              <svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span class="visually-hidden">List view</span>
+            </button>
+            <button id="layout-grid" class="seg-btn" type="button" aria-pressed="false" title="Grid view">
+              <svg class="i" aria-hidden="true"><use href="#i-grid"/></svg><span class="visually-hidden">Grid view</span>
+            </button>
           </div>
         </div>
-
-        <div class="tab-panel" role="tabpanel" id="panel-auto" aria-labelledby="tab-auto" hidden>
-          <p class="panel-intro">Automations run on every upload. Turn one off and new files skip it.</p>
-          <ul id="rule-list" class="rule-list"></ul>
-        </div>
       </div>
+      <div id="files" class="files" tabindex="-1"></div>
+    </main>
+  </div>
 
-      <section class="card activity-card" aria-labelledby="activity-heading">
-        <div class="activity-head">
-          <h2 id="activity-heading" class="section-title">Agent activity</h2>
-          <span class="live-dot" title="Updates every 3 seconds"><span aria-hidden="true"></span>Live</span>
-        </div>
-        <ol id="activity-list" class="activity-list" aria-live="polite"></ol>
-      </section>
-    </aside>
-  </main>
+  <!-- ── Preview drawer ── -->
+  <div id="drawer-scrim" class="scrim scrim-drawer" aria-hidden="true"></div>
+  <aside id="drawer" class="drawer" role="dialog" aria-modal="false" aria-labelledby="drawer-title" data-open="false" inert></aside>
 
-  <div id="drop-overlay" class="drop-overlay" hidden>
-    <div class="drop-box">
-      <svg class="icon icon-xl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0l-5 5m5-5l5 5M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-      <p class="drop-title">Drop files to upload</p>
-      <p class="drop-sub">.txt, .md, .csv or .pdf · up to 10 MB each</p>
+  <!-- ── Floating selection bar ── -->
+  <div id="selbar" class="selbar" role="region" aria-label="Selection" data-open="false" inert></div>
+
+  <div id="panel-scrim" class="scrim scrim-panel" aria-hidden="true"></div>
+
+  <!-- ── Automations popover ── -->
+  <section id="auto-panel" class="panel auto-panel" role="dialog" aria-labelledby="auto-title" data-open="false" inert>
+    <header class="panel-head">
+      <h2 id="auto-title" class="panel-title"><svg class="i" aria-hidden="true"><use href="#i-zap"/></svg>Automations</h2>
+      <button class="icon-btn" type="button" data-close="auto" aria-label="Close automations"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </header>
+    <p class="panel-intro">Run on every new upload. Turn one off and new files skip it.</p>
+    <ul id="rule-list" class="rule-list"></ul>
+  </section>
+
+  <!-- ── Agent activity panel ── -->
+  <section id="activity-panel" class="panel activity-panel" role="dialog" aria-labelledby="activity-title" data-open="false" inert>
+    <header class="panel-head">
+      <h2 id="activity-title" class="panel-title"><span class="live-dot" aria-hidden="true"></span>Agent activity</h2>
+      <button class="icon-btn" type="button" data-close="activity" aria-label="Close agent activity"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </header>
+    <ol id="activity-list" class="activity-list" aria-live="polite"></ol>
+  </section>
+
+  <!-- ── Context menu (row "more" / Move to… / Topic) ── -->
+  <div id="menu" class="menu" role="menu" data-open="false" hidden></div>
+
+  <div id="drop-overlay" class="drop-overlay" data-open="false" aria-hidden="true">
+    <div class="drop-card">
+      <span class="drop-icon"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg></span>
+      <p class="drop-title">Drop to upload</p>
+      <p class="drop-sub">.txt, .md, .csv or .pdf · the Organizer files them for you</p>
     </div>
   </div>
 

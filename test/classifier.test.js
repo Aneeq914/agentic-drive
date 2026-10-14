@@ -82,3 +82,67 @@ test('invoice labels only count at the start of a line, not mid-sentence', () =>
   assert.notEqual(k('We noted the total due was $40.00 and the bill to them was late.', 'n.txt').kind, 'invoice');
   assert.equal(k('Total due: $40.00\nBill to: Acme', 'n.txt').kind, 'invoice');
 });
+
+// ── Task 6 accuracy rules: each test uses a new short text, not a sample or holdout file. ──
+
+test('a Statement of Work with a signature block is a contract, even with deliverables', () => {
+  const t = '# Statement of Work 3\nThis SOW is entered into between Lumen Co ("Client") and Pixelworks ("Vendor").\n## Services\nVendor will build two landing pages.\n## Deliverables\n- Landing pages\nSigned for Client: ________';
+  assert.equal(k(t, 'work-order.md', '.md').kind, 'contract');
+});
+
+test('a cover letter is people', () => {
+  const t = 'Dear Hiring Manager,\nI am excited to apply for the Junior Accountant position at Ferncliff.\nI have attached my resume and two references.\nBest wishes,\nLee Park';
+  assert.equal(k(t, 'letter.txt').kind, 'people');
+});
+
+test('a job ad with role / candidate / benefits sections is people', () => {
+  const t = 'Warehouse Lead\nAbout the role\nKeep the night shift on schedule.\nYou will\n- run the pick team\nYou have\n- 3 years in a warehouse\nWe offer a fair salary and private health insurance.';
+  assert.equal(k(t, 'posting.txt').kind, 'people');
+});
+
+test('an incident review (what happened / root cause) is a report', () => {
+  const t = '# Outage on 2 May\n## What happened\nThe login service returned errors for 20 minutes.\n## Root cause\nAn expired TLS certificate.\n## Follow-ups\n- Automate certificate renewal';
+  assert.equal(k(t, 'may-outage.md', '.md').kind, 'report');
+});
+
+test('an RFC (status, alternatives considered, open questions) is a spec, not a proposal', () => {
+  const t = 'Move image resizing to a worker queue\nStatus: Proposed\nBackground\nResizing blocks web requests.\nProposal\nPush resize jobs to a queue.\nAlternatives considered\nA bigger web server.\nOpen questions\nWho owns the queue?';
+  assert.equal(k(t, 'image-queue.txt').kind, 'spec');
+});
+
+test('a project plan (status, milestone table with owners, risks) is a spec', () => {
+  const t = '# Warehouse relocation\nStatus: In progress\n## Goals\n- Move without downtime\n| Milestone | Owner | Target date |\n|---|---|---|\n| Sign lease | Ana | Mar 1 |\n## Risks\n- Movers may be late';
+  assert.equal(k(t, 'relocation.md', '.md').kind, 'spec');
+});
+
+test('an article with a byline and reading time is a report, even when it is about invoices', () => {
+  const t = '# Why we stopped chasing invoices by hand\n*By Ravi Menon · 5 min read*\nEvery invoice we sent was paid 40 days late. Invoice reminders were manual and the payment due dates slipped.';
+  const r = k(t, 'stop-chasing.md', '.md');
+  assert.equal(r.kind, 'report');
+  assert.notEqual(r.kind, 'invoice');
+});
+
+test('a byline far down the page does not make a report', () => {
+  const t = `Remember to water the plants on Friday.\n${'x '.repeat(200)}\nBy Friday Morning we should be done.`;
+  assert.equal(k(t, 'note.txt').scores.report, 0);
+});
+
+test('a pitch email with what is included and a budget is a proposal, not an invoice', () => {
+  const t = "Subject: Summer menu launch idea\nHi Jo,\nHere is how we would run the launch.\nWhat's included:\n- 6 photos\n- a flyer\nBudget: about $4,000. Happy to send a formal quote.";
+  const r = k(t, 'launch.txt');
+  assert.equal(r.kind, 'proposal');
+});
+
+test('topic: a proposal prepared for a client is Sales; an internal proposal is scored by keywords', () => {
+  const client = '# Proposal: Data dashboard\nPrepared for: Kim Lee, Ops Director, Rivet Co\n## What we propose\nA product analytics dashboard with UX research and design.';
+  assert.equal(classifyTopic({ name: 'dashboard.md', ext: '.md', text: client }, 'proposal'), 'Sales');
+  assert.equal(classifyTopic({ name: 'idea.md', ext: '.md', text: '# Proposal\nA product feature with UX research and design.' }, 'proposal'), 'Product');
+  // "Prepared for:" only means "client quote" on a proposal, not on a report.
+  assert.equal(classifyTopic({ name: 'r.md', ext: '.md', text: 'Prepared for: the board\ncampaign brand social ads' }, 'report'), 'Marketing');
+});
+
+test('topic: incident and hackathon vocabulary is Engineering; office moves are Operations', () => {
+  assert.equal(classifyTopic({ name: 'postmortem.md', ext: '.md', text: 'The incident: a config change caused an outage; rollback on kubernetes; payment errors.' }, 'report'), 'Engineering');
+  assert.equal(classifyTopic({ name: 'build-day.md', ext: '.md', text: 'Hackathon: build a prototype with any stack; an invoice demo is fine.' }, 'proposal'), 'Engineering');
+  assert.equal(classifyTopic({ name: 'move.md', ext: '.md', text: 'Office relocation: furniture, movers, new premises, budget.' }, 'spec'), 'Operations');
+});

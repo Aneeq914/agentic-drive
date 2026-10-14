@@ -1,0 +1,22 @@
+{
+  "scan_003.txt": { "kind": "invoice", "topic": "Finance" },
+  "INV-2026-0412.md": { "kind": "invoice", "topic": "Finance" },
+  "fwd_adjustment_kestrel.txt": { "kind": "invoice", "topic": "Finance" },
+  "pipeline_sync_0923.txt": { "kind": "meeting", "topic": "Sales" },
+  "standup.md": { "kind": "meeting", "topic": "Engineering" },
+  "notes_priya.md": { "kind": "meeting", "topic": "HR" },
+  "mutual_nda_signed.txt": { "kind": "contract", "topic": "Legal" },
+  "final_v2.md": { "kind": "contract", "topic": "Legal" },
+  "re_spring_gala_catering.txt": { "kind": "proposal", "topic": "Sales" },
+  "challenge_brief.md": { "kind": "proposal", "topic": "Operations" },
+  "clm_prd_draft.md": { "kind": "spec", "topic": "Product" },
+  "roadmap_2027.md": { "kind": "spec", "topic": "Product" },
+  "billing-run-rfc.md": { "kind": "spec", "topic": "Engineering" },
+  "october_digest.txt": { "kind": "report", "topic": "HR" },
+  "postmortem_ehr_outage.md": { "kind": "report", "topic": "Engineering" },
+  "q3_numbers.txt": { "kind": "report", "topic": "Sales" },
+  "cv_final.txt": { "kind": "people", "topic": "HR" },
+  "field_coordinator_JD.txt": { "kind": "people", "topic": "HR" },
+  "untitled.txt": { "kind": "other", "topic": null },
+  "for_m.md": { "kind": "other", "topic": null }
+}

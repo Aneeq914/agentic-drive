@@ -96,3 +96,89 @@ test('the same sentence found in two files is answered once', () => {
   assert.equal(r.answer.split('\n').length, 1);
   assert.equal(r.citations.length, 1);
 });
+
+// ── Answer quality over the real 32-file drive (decoys included) ──
+
+test('a passage matching only a synonym of one question word is not relevant', () => {
+  const small = [
+    { id: 'chairs', name: 'chairs.md', ext: '.md', text: 'The new chairs cost $500.' },
+    { id: 'trip', name: 'trip.md', ext: '.md', text: 'Travel to Dubai for the trade show: $842.60.' },
+  ];
+  // "cost" is only a synonym of "spend", and nothing else in chairs.md matches.
+  assert.deepEqual(rankPassages('How much did we spend on travel?', [...docs, ...small]).map((r) => r.passage.fileId), ['trip']);
+});
+
+test('answers about another named thing are dropped ("Acme" terms, not any invoice\'s terms)', () => {
+  const small = [
+    { id: 'msa', name: 'acme-msa.md', ext: '.md', text: '## Fees\nPayment is due 30 days after the invoice date (Net 30).' },
+    { id: 'inv', name: 'cloudnest-invoice.txt', ext: '.txt', text: 'Total Due: $1,250.00\nPayment terms: Net 15.' },
+  ];
+  const r = answerOffline('What are the Acme payment terms?', [...docs, ...small]);
+  assert.match(r.answer, /Net 30/);
+  assert.deepEqual(r.citations.map((c) => c.fileId), ['msa']);
+});
+
+test('markdown table rows are read back as "row — column: value" lines', () => {
+  const small = [{ id: 'w', name: 'analytics.md', ext: '.md', text: '## Headline numbers\n| Metric | August | September |\n|---|---|---|\n| Sessions | 16,446 | 18,420 |\n| Users | 11,905 | 12,870 |' }];
+  const r = answerOffline('How many sessions did the website get in September?', [...docs, ...small]);
+  assert.equal(r.answer, '• Sessions — August: 16,446, September: 18,420 [1]');
+});
+
+test('real drive: each demo question gets its fact first, from the right file', async () => {
+  const samples = await loadSamples();
+  const cases = [
+    ['What was Q3 revenue?', /\$182,400/, 'q3-board-update-meeting.md'],
+    ['How many sessions did the website get in September?', /September: 18,420/, 'website-analytics-september.md'],
+    ['How long does the Northwind NDA last?', /two \(2\) years/, 'nda-northwind-health.txt'],
+    ['How much did the office move cost?', /\$9,870/, 'q3-board-update-meeting.md'],
+    ['What is the salary range for the senior backend engineer?', /^• Salary range: PKR 650,000 – 850,000 per month/, 'job-description-senior-backend-engineer.md'],
+    ['When does the Acme site go live?', /2026-11-20/, 'acme-retail-kickoff-call.md'],
+    ['What is the Build Day prize?', /First place gets PKR 50,000/, 'internal-hackathon-brief.md'],
+  ];
+  for (const [q, fact, file] of cases) {
+    const r = answerOffline(q, samples);
+    assert.match(r.answer.split('\n')[0], fact, q);
+    assert.equal(r.citations[0].fileName, file, q);
+  }
+});
+
+test('real drive: no noise citations for single-source facts', async () => {
+  const samples = await loadSamples();
+  for (const [q, file] of [
+    ['How long does the Northwind NDA last?', 'nda-northwind-health.txt'],
+    ['How much was the CloudNest invoice?', 'invoice-cloudnest-INV-1042.txt'],
+  ]) assert.deepEqual(answerOffline(q, samples).citations.map((c) => c.fileName), [file], q);
+  const terms = answerOffline('What are the Acme payment terms?', samples);
+  assert.match(terms.answer, /Net 30/);
+  assert.ok(terms.citations.every((c) => c.fileName === 'acme-retail-msa.md'), terms.answer);
+});
+
+test('a name that no file mentions is NOT_FOUND, not another vendor\'s amount', async () => {
+  assert.deepEqual(answerOffline('How much did we pay Stripe?', await loadSamples()), { answer: NOT_FOUND, citations: [] });
+});
+
+test('answers stay put when ~30 unrelated files are added to the drive', async () => {
+  const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
+  const extra = await Promise.all(['holdout', 'holdout-2'].flatMap((dir) => fs.readdirSync(path.join(fixtures, dir))
+    .filter((name) => /\.(md|txt)$/.test(name))
+    .map(async (name) => ({ id: `${dir}/${name}`, name, ext: path.extname(name), text: await extractText(fs.readFileSync(path.join(fixtures, dir, name)), name) }))));
+  const drive = [...await loadSamples(), ...extra];
+  const travel = answerOffline('How much did we spend on travel?', drive);
+  assert.match(travel.answer.split('\n')[0], /Total: \$842\.60/);
+  assert.deepEqual(travel.citations.map((c) => c.fileName), ['invoice-skyway-travel-INV-2207.txt']);
+  assert.match(answerOffline('What was Q3 revenue?', drive).answer.split('\n')[0], /\$182,400/);
+  assert.match(answerOffline('What was the Q3 marketing budget?', drive).answer.split('\n')[0], /\$120,000/);
+});
+
+test('a long paragraph is split at line breaks, never glued into one line', () => {
+  const lines = Array.from({ length: 40 }, (_, i) => `Line ${i} has a few words`);
+  const p = buildPassages([{ id: 'r', name: 'resume.pdf', ext: '.pdf', text: lines.join('\n') }]);
+  assert.ok(p.length > 1);
+  assert.deepEqual(p.flatMap((x) => x.text.split('\n')), lines);
+});
+
+test('real drive: a name heading picked as the answer reads on into the line below it', async () => {
+  const r = answerOffline('Who is Priya Nair?', await loadSamples());
+  assert.match(r.answer.split('\n')[0], /^• Priya Nair — Product Designer/);
+  assert.ok(r.citations.every((c) => c.fileName === 'resume-priya-nair-product-designer.pdf'));
+});

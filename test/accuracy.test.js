@@ -35,3 +35,14 @@ test('holdout: at least 85% of kinds correct, and no brief is an invoice', async
   assert.ok(accuracy >= 0.85, `holdout kind accuracy ${(accuracy * 100).toFixed(0)}%\n${misses.join('\n')}`);
   assert.ok(rows.filter((r) => r.want.kind === 'proposal').every((r) => r.got.kind !== 'invoice'));
 });
+
+// holdout-2 was written blind AFTER tuning and is never tuned against: it is the honest measure.
+// The bar is lower than for the tuned sets, but every miss must fail safe (land in "Other"), never in a wrong category.
+test('fresh blind holdout-2: >= 75% kinds correct, and every miss lands in Other', async () => {
+  const dir = path.join(root, 'test/fixtures/holdout-2');
+  const rows = await run(dir, path.join(dir, 'labels.json'));
+  const correct = rows.filter((r) => r.want.kind === r.got.kind).length;
+  const confidentWrong = rows.filter((r) => r.want.kind !== r.got.kind && r.got.kind !== 'other');
+  assert.ok(correct / rows.length >= 0.75, `holdout-2 kind accuracy ${correct}/${rows.length}`);
+  assert.deepEqual(confidentWrong, [], 'a wrong guess must go to Other, not to another category');
+});

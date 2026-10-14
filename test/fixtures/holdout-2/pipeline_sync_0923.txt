@@ -1,0 +1,31 @@
+Corvane Medical Supply - Weekly Pipeline Sync
+23 September 2026, 10:00-10:45, Room 2B / Teams
+
+Attendees: J. Whitlock (chair), A. Ferreira, S. Nakamura, L. Boateng
+Apologies: R. Clancy
+
+1. St Aldhelm's Hospital infusion pump proposal
+   - Alana walked through the draft proposal. Pricing currently assumes
+     120 pumps over three years with a bundled service plan.
+   - Sota flagged that the procurement team asked for a separate quote for
+     consumables; the proposal should present this as an optional add-on.
+   - Agreed the executive summary is too long. Alana to cut to one page.
+   - Decision: submit by 7 Oct, not 30 Sep, to allow legal to review the
+     warranty wording.
+
+2. Q4 forecast
+   - Lewis reported pipeline at £1.8m weighted, down from £2.1m. Two
+     clinics have pushed decisions to January.
+   - Jonah asked everyone to update stages in the CRM by Friday.
+
+3. AOB
+   - Trade show stand at MedTech North is confirmed; Sota to coordinate
+     demo units.
+
+Actions
+  - Alana: revise proposal exec summary + add consumables option (2 Oct)
+  - Sota: get consumables pricing from supplier (29 Sep)
+  - Lewis: CRM clean-up reminder to team (today)
+  - Jonah: book legal review slot (25 Sep)
+
+Next meeting: 30 September, same time.
