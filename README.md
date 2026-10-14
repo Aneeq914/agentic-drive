@@ -340,3 +340,7 @@ AI paths are tested with fake model replies, including failures. The store and A
 - **The expense log trusts the kind.** Every file filed as an invoice is logged in `expenses.csv` unless its vendor matches `OWN_COMPANY`. If that setting doesn't match how your company's name is written on the invoices you send, they are logged as expenses too.
 - **AI synthesis truncates long files.** With AI on, the Synthesizer sends only the first 12,000 characters of each file to the model.
 - **No accounts.** There is no login, no permissions and no multi-user support. Anyone who can reach the server can see and delete every file.
+
+## License
+
+[MIT](LICENSE) © 2026 Aneeq

@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "description": "A cloud drive run by AI agents: auto-organising, semantic search, cross-document synthesis and automated workflows.",
-  "engines": { "node": ">=22.9" },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.9"
+  },
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "dev": "node --watch --env-file-if-exists=.env server.js",
