@@ -532,7 +532,8 @@
         '<span class="dot"></span>' + escapeHtml(t) + '<span class="topic-count">' + escapeHtml(n) + '</span></button>';
     }).join('');
 
-    el.btnSamples.hidden = !(state.filesLoaded && !state.filesError && files.length === 0);
+    // Offer the demo files until they are loaded, even when the drive already holds the user's own uploads.
+    el.btnSamples.hidden = !(state.filesLoaded && !state.filesError && !files.some((f) => f.source === 'sample'));
   }
 
   /* ───────────────────────── Main area ───────────────────────── */
