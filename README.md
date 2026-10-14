@@ -275,7 +275,6 @@ agentic-drive/
 │   └── fixtures/
 │       ├── holdout/             16 tricky texts + labels.json (tuned against)
 │       └── holdout-2/           20 blind texts + labels.json (never tuned against)
-├── docs/superpowers/         Design specs and implementation plans
 └── data/                     Created at runtime (git-ignored): files/ and db.json
 ```
 
