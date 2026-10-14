@@ -28,10 +28,15 @@ export function splitSentences(text) {
     .filter(Boolean);
 }
 
+// Words that are frequent in notes but say nothing about the topic, so they make poor tags.
+const TAG_IGNORE = new Set(`will shall would should must action actions item items date attendees agenda minutes notes
+team total generated created automatically january february march april june july august september october november
+december monday tuesday wednesday thursday friday saturday sunday`.split(/\s+/).filter(Boolean));
+
 export function topTerms(text, n) {
   const counts = new Map();
   for (const w of String(text).toLowerCase().match(/[a-z]+/g) || []) {
-    if (w.length < 4 || STOPWORDS.has(w)) continue;
+    if (w.length < 4 || STOPWORDS.has(w) || TAG_IGNORE.has(w)) continue;
     counts.set(w, (counts.get(w) || 0) + 1);
   }
   return [...counts.entries()]
@@ -49,9 +54,14 @@ function plainLines(text) {
     .filter(Boolean);
 }
 
+const LABEL_LINE = /^[A-Za-z][\w ]{0,24}:\s/;
+
 export function summarize(text, max = 160) {
   if (!String(text).trim()) return '(no readable text)';
-  const sentences = splitSentences(plainLines(text).join('\n'));
+  // "Date: …", "Attendees: …", "From: …" lines are metadata, not what the file is about.
+  const lines = plainLines(text);
+  const content = lines.filter((l) => !LABEL_LINE.test(l));
+  const sentences = splitSentences((content.length ? content : lines).join('\n'));
   const pick = sentences.find((s) => s.split(/\s+/).length >= 6) || sentences[0] || String(text).trim();
   return pick.length > max ? pick.slice(0, max - 1).trimEnd() + '…' : pick;
 }

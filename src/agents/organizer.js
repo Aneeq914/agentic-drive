@@ -20,6 +20,10 @@
  *   a score below 2 (or no text) gives `General`; ties go to the earlier topic in TOPICS.
  * - A file with no readable text is stored as `report` in `General` with summary
  *   "(no readable text)" (plan Review Focus #3).
+ * - Offline summaries: invoices read "Invoice <no> from <vendor> for <total>
+ *   (<category>)."; CSVs read "Spreadsheet with N rows. Columns: …"; other
+ *   files use their first real sentence, skipping "Date:/Attendees:" lines
+ *   (tested: "offline summaries…", text.test "summarize skips…").
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
  * - The offline result is computed first and every AI field is validated and
@@ -43,6 +47,7 @@
  */
 import { tokenize, topTerms, summarize, stem } from '../text.js';
 import { parseJsonReply } from '../json-reply.js';
+import { parseInvoice, parseCsvLine } from './automations.js';
 
 export const TYPES = ['invoice', 'meeting', 'data', 'report'];
 
@@ -85,7 +90,24 @@ export function organizeOffline({ name, ext, text }) {
   const type = detectType(name, ext, text);
   const folder = type === 'invoice' ? 'Finance' : detectFolder(name, ext, text);
   const tags = [...new Set([type, folder.toLowerCase(), ...topTerms(text, 5)])].slice(0, 7);
-  return { type, folder, tags, summary: summarize(text) };
+  return { type, folder, tags, summary: offlineSummary(type, ext, text) };
+}
+
+// Invoices and spreadsheets read badly as "first sentence", so describe them instead.
+export function offlineSummary(type, ext, text) {
+  if (type === 'invoice') {
+    const inv = parseInvoice(text);
+    if (inv) {
+      const amount = inv.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const money = inv.currency === 'USD' ? `$${amount}` : `${amount} ${inv.currency}`;
+      return `Invoice ${inv.number ? `${inv.number} ` : ''}from ${inv.vendor || 'unknown vendor'} for ${money} (${inv.category}).`.slice(0, 160);
+    }
+  }
+  if (ext === '.csv' && String(text).trim()) {
+    const [header, ...rows] = String(text).split(/\r?\n/).filter((l) => l.trim());
+    return `Spreadsheet with ${rows.length} rows. Columns: ${parseCsvLine(header).join(', ')}.`.slice(0, 160);
+  }
+  return summarize(text);
 }
 
 const SYSTEM = 'You organise files in a cloud drive. Reply with JSON only.';

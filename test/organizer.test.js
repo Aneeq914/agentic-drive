@@ -72,3 +72,10 @@ test('AI cannot override csv->data, long AI folders fall back, one keyword hit i
   assert.equal(r.folder, 'Finance');
   assert.equal(detectFolder('notes.txt', '.txt', 'The app is nice.'), 'General');
 });
+
+test('offline summaries: invoices describe the bill, CSVs describe the table', () => {
+  const inv = organizeOffline({ name: 'inv.txt', ext: '.txt', text: invoice });
+  assert.equal(inv.summary, 'Invoice INV-1042 from CloudNest for $1,250.00 (Software).');
+  const csv = organizeOffline({ name: 'b.csv', ext: '.csv', text: 'line_item,department,q3_budget\nA,B,1\nC,D,2\n' });
+  assert.equal(csv.summary, 'Spreadsheet with 2 rows. Columns: line_item, department, q3_budget.');
+});

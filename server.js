@@ -114,7 +114,10 @@ export function createApp({ dataDir, llm, samplesDir = path.join(here, 'src', 's
     if (!Object.hasOwn(FORMATS, format)) throw new HttpError(400, `Format must be one of: ${Object.keys(FORMATS).join(', ')}.`);
     const docs = [...new Set(fileIds)].map(mustGet);
     const result = await synthesize(docs, format, { llm, log: (a, m) => store.addActivity(a, m) });
-    const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '-');
+    // Local time, so the name matches the time the UI shows; ':' is avoided because it is awkward in file names.
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}-${pad(now.getMinutes())}`;
     const record = pipeline.saveGenerated({ name: `${result.title} - ${stamp}.md`, folder: 'Generated', content: result.content, type: 'report' });
     store.addActivity('Synthesizer', `Created "${record.name}" from ${docs.length} files${result.by === 'ai' ? ' (AI)' : ''}.`);
     res.json(record);

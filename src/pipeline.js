@@ -23,10 +23,11 @@
  *   on agent output) — that is what prevents automation loops.
  * - Do not create a second expenses.csv; always look it up by name.
  */
+import path from 'node:path';
 import { extractText } from './extract.js';
-import { organize } from './agents/organizer.js';
+import { organize, offlineSummary } from './agents/organizer.js';
 import { runAutomations } from './agents/automations.js';
-import { summarize, topTerms } from './text.js';
+import { topTerms } from './text.js';
 
 export function createPipeline({ store, llm }) {
   const log = (agent, message) => store.addActivity(agent, message);
@@ -36,14 +37,14 @@ export function createPipeline({ store, llm }) {
     const existing = store.findByName(name);
     if (existing) {
       store.replaceContent(existing.id, buffer, content);
-      return store.update(existing.id, { summary: summarize(content) });
+      return store.update(existing.id, { summary: offlineSummary(type ?? 'report', path.extname(name).toLowerCase(), content) });
     }
     const rec = store.add({ name, buffer, text: content, source: 'agent', generated: true });
     return store.update(rec.id, {
       type: type ?? (name.endsWith('.csv') ? 'data' : 'report'),
       folder,
       tags: [...new Set(['generated', folder.toLowerCase(), ...topTerms(content, 4)])],
-      summary: summarize(content),
+      summary: offlineSummary(type ?? 'report', path.extname(name).toLowerCase(), content),
     });
   }
 

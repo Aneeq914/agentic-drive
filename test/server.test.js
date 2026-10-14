@@ -129,3 +129,8 @@ test('automations toggle, activity feed, delete, download, 404s', async () => {
   assert.deepEqual((await json(`/api/files/${f.id}`, { method: 'DELETE' })).body, { ok: true });
   assert.equal((await json(`/api/files/${f.id}`)).status, 404);
 });
+
+test('generated expenses.csv gets a descriptive summary', async () => {
+  const csv = await byName('expenses.csv');
+  assert.match(csv.summary, /^Spreadsheet with \d+ rows\. Columns: date, vendor, invoice_number/);
+});

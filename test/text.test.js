@@ -55,3 +55,13 @@ test('extractors find decisions, requirements, action items, amounts', () => {
   ]);
   assert.deepEqual(extractAmounts('Paid $1,250.00 and 300 USD and €40'), ['$1,250.00', '300 USD', '€40']);
 });
+
+test('summarize skips "Label: value" metadata lines when a real sentence exists', () => {
+  const t = '# Kickoff\nDate: 2026-07-02\nAttendees: Sara Khan, Bilal Ahmed, Hina Raza, Omar Siddiqui\n## Discussion\nThe team reviewed the Q3 marketing goals: grow sign-ups by 25%.';
+  assert.equal(summarize(t), 'The team reviewed the Q3 marketing goals: grow sign-ups by 25%.');
+  assert.equal(summarize('Owner: Engineering team and friends of the team'), 'Owner: Engineering team and friends of the team');
+});
+
+test('topTerms ignores filler words, months and meeting boilerplate', () => {
+  assert.deepEqual(topTerms('will will will action items items July July August campaign', 3), ['campaign']);
+});
