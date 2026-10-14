@@ -61,7 +61,7 @@ active shift, can it be demoed in seconds, and can it work without an AI key?
 | 11 | Budget vs. actual check (invoices against `q3-budget.csv`) | Later | The best cross-reference idea we had; needs line-item matching we could not finish in time |
 | 12 | Contradiction finder ("kickoff says $120k, wrap-up implies more") | Later | Very "aha", but easy to get wrong without a strong model |
 | 13 | User-defined automation rules ("when X lands in Y, do Z") | Later | Two fixed rules with toggles were enough to prove the idea |
-| 14 | Vector database for search | Dropped | TF-IDF plus a synonym list works offline on a small drive; no extra service to install |
+| 14 | Vector database for search | Dropped | BM25 keyword ranking plus a synonym list works offline on a small drive; no extra service to install |
 | 15 | Voice notes transcription | Dropped | Scope: audio needs a speech model and a different upload path |
 | 16 | OCR for scanned PDFs | Dropped | Scope: we read PDFs that already contain text |
 | 17 | Auto-sharing files with the right teammates | Dropped | Privacy: an agent should never decide who sees your data |
@@ -112,10 +112,11 @@ automation that matches runs → activity entries are written.
    marketing meetings?"*
 2. Search splits every file into passages, widens the question with synonyms (budget also
    means spend, cost, allocation), and ranks the passages.
-3. **Aha!** Instead of a list of files, you get a sentence: the Q3 marketing budget was approved at
-   $120,000, with a `[1]` citation. Click `[1]` and the kickoff minutes open in the viewer. The same
-   box answers questions about the PDF invoice or the budget spreadsheet, because every format is
-   just text to the agent.
+3. **Aha!** Instead of a list of files, you get the answer itself, pulled from all three meetings:
+   $120,000 approved at the kickoff, $64,500 of it spent by the mid-point, $118,200 spent by the
+   wrap-up, and each line has a `[n]` citation. Click one and that meeting's minutes open in the
+   viewer. The same box answers questions about the PDF invoice or the budget spreadsheet, because
+   every format is just text to the agent.
 
 ### Flow 3: Cross-document synthesis ("three meetings, one document")
 1. Tick the three Q3 marketing meeting notes (kickoff, mid-point review, wrap-up).

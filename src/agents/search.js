@@ -182,7 +182,7 @@ export function answerOffline(question, docs) {
   const termScore = (t) => (weights.has(t) ? weights.get(t) * idf(t) : 0);
   const maxTerm = Math.max(...[...weights.keys()].map(termScore));
   const moneyQuestion = MONEY_QUESTION.test(question);
-  const lines = top.map(({ passage }, i) => {
+  const picks = top.map(({ passage }) => {
     let best = '';
     let bestScore = -Infinity;
     for (const s of candidateLines(passage)) {
@@ -194,10 +194,22 @@ export function answerOffline(question, docs) {
       if (sc > bestScore) { best = s; bestScore = sc; }
     }
     // Short lines ("Total: $842.60") need their file name to make sense on their own.
+    return { passage, best };
+  });
+  // A generated copy (e.g. "kickoff - action items.md") can hold the same sentence; answer it once.
+  const seen = new Set();
+  const unique = picks.filter(({ best }) => {
+    const key = best.toLowerCase().replace(/\s+/g, ' ');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const lines = unique.map(({ passage, best }, i) => {
+    // Short lines ("Total: $842.60") need their file name to make sense on their own.
     const context = best.split(/\s+/).length < 6 ? ` (${passage.fileName})` : '';
     return `• ${best}${context} [${i + 1}]`;
   });
-  return { answer: lines.join('\n'), citations: top.map((r, i) => toCitation(r.passage, i + 1)) };
+  return { answer: lines.join('\n'), citations: unique.map(({ passage }, i) => toCitation(passage, i + 1)) };
 }
 
 const SYSTEM = 'You answer questions about the user\'s files using only the sources given. Cite every fact with its source number like [1].';

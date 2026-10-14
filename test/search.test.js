@@ -86,3 +86,13 @@ test('headings are not used as answers when a real sentence matches', async () =
   assert.equal(r.citations.length, 1);
   assert.doesNotMatch(r.answer, /Architecture/);
 });
+
+test('the same sentence found in two files is answered once', () => {
+  const dupDocs = [
+    { id: 'a', name: 'kickoff.md', ext: '.md', text: 'Sara will finalise the campaign brief by July 8.' },
+    { id: 'b', name: 'kickoff - action items.md', ext: '.md', text: '- [ ] Sara will finalise the campaign brief by July 8.' },
+  ];
+  const r = answerOffline('Who owns the campaign brief?', [...docs, ...dupDocs]);
+  assert.equal(r.answer.split('\n').length, 1);
+  assert.equal(r.citations.length, 1);
+});

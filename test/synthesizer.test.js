@@ -40,3 +40,10 @@ test('synthesize uses AI text, appends Sources if missing, falls back on error',
   assert.equal(bad.by, 'offline');
   assert.equal(logs.length, 1);
 });
+
+test('requirements format does not repeat action items under Decisions', () => {
+  const c = synthesizeOffline(docs, 'requirements').content;
+  const decisions = c.split('## Decisions')[1].split('## Action Items')[0];
+  assert.doesNotMatch(decisions, /Sara will finalise/);
+  assert.match(decisions, /agreed to move \$10,000/);
+});
