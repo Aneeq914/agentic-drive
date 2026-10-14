@@ -1,0 +1,24 @@
+{
+  "name": "agentic-drive",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A cloud drive run by AI agents: auto-organising, semantic search, cross-document synthesis and automated workflows.",
+  "engines": { "node": ">=22.9" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "dev": "node --watch --env-file-if-exists=.env server.js",
+    "test": "node --test \"test/**/*.test.js\"",
+    "make-sample-pdf": "node scripts/make-sample-pdf.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "@google/genai": "^2.29.1",
+    "express": "^5.3.0",
+    "multer": "^2.4.0",
+    "pdf-parse": "^2.4.5"
+  },
+  "devDependencies": {
+    "pdfkit": "^0.20.2"
+  }
+}
